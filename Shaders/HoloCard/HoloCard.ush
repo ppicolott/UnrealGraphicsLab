@@ -7,8 +7,8 @@ static const float HC_SEED_OFFSET_Y = 7.7;
 static const float HC_SEED_SIZE = 11.3;
 static const float HC_SEED_TILT = 17.9;
 
-// Card layout masks (R = frame, G = art, B = text)
-float3 HC_CardLayout(float2 UV, float Aspect, float Radius, float Border, float FullArt)
+// Card layout masks (R = frame, G = art, B = text, A = title bar)
+float4 HC_CardLayout(float2 UV, float Aspect, float Radius, float Border, float FullArt)
 {
     float2 P = UV - 0.5;
     float2 CardHalf = float2(0.5 * Aspect, 0.5);
@@ -25,7 +25,10 @@ float3 HC_CardLayout(float2 UV, float Aspect, float Radius, float Border, float 
     float2 TextHalf = float2(ArtHalf.x, 0.12);
     float Text = GL_Fill(GL_SDRoundedBox(P - float2(0.0, 0.30), TextHalf, 0.01));
     
-    return float3(Frame, Art, Text);
+    float2 TitleHalf = float2(ArtHalf.x, 0.03);
+    float Title = GL_Fill(GL_SDRoundedBox(P - float2(0.0, -0.395), TitleHalf, 0.01));
+    
+    return float4(Frame, Art, Text, Title);
 }
 
 float3 HC_HoloFoil(float2 UV, float3 ViewTS, float Frequency, float ViewInfluence)
