@@ -1,0 +1,12 @@
+// Inigo Quilez technique:
+float3 GL_Rainbow(float T)
+{
+    return 0.5 + 0.5 * cos(6.28318 * (T + float3(0.0, 0.33, 0.67)));
+}
+
+float3 HC_HoloFoil(float2 UV, float3 ViewTS, float Frequency, float ViewInfluence)
+{
+    float Phase = (UV.x + UV.y) * Frequency              // diagonal bands across the card
+                + (ViewTS.x + ViewTS.y) * ViewInfluence; // shifted by the angle
+    return GL_Rainbow(Phase);
+}
