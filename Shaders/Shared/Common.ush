@@ -1,0 +1,6 @@
+#pragma once
+
+float3 GL_TestColor()
+{
+    return float3(1, 0, 1); // Test
+}
