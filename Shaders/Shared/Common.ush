@@ -1,6 +1,7 @@
 #pragma once
 
-float3 GL_TestColor()
+float GL_SDRoundedBox(float2 P, float2 HalfSize, float Radius)
 {
-    return float3(1, 0, 1); // Test
+    float2 Q = abs(P) - HalfSize + Radius;
+    return length(max(Q, 0.0)) + min(max(Q.x, Q.y), 0.0) - Radius;
 }
