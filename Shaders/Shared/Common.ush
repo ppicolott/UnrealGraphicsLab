@@ -4,10 +4,11 @@
 static const float2 GL_HASH_SCALE = float2(123.34, 456.21);
 static const float GL_HASH_BIAS = 45.32;
 
-float3 GL_Rainbow(float T)
+float GL_Hash21(float2 P)
 {
-    // Cosine palette (Inigo Quilez)
-    return 0.5 + 0.5 * cos(6.28318 * (T + float3(0.0, 0.33, 0.67)));
+    P = frac(P * GL_HASH_SCALE);
+    P += dot(P, P + GL_HASH_BIAS);
+    return frac(P.x * P.y);
 }
 
 float GL_SDRoundedBox(float2 P, float2 HalfSize, float Radius)
@@ -16,9 +17,13 @@ float GL_SDRoundedBox(float2 P, float2 HalfSize, float Radius)
     return length(max(Q, 0.0)) + min(max(Q.x, Q.y), 0.0) - Radius;
 }
 
-float GL_Hash21(float2 P)
+float GL_Fill(float D)
 {
-    P = frac(P * GL_HASH_SCALE);
-    P += dot(P, P + GL_HASH_BIAS);
-    return frac(P.x * P.y);
+    return saturate(0.5 - D / fwidth(D));
+}
+
+float3 GL_Rainbow(float T)
+{
+    // Cosine palette (Inigo Quilez)
+    return 0.5 + 0.5 * cos(6.28318 * (T + float3(0.0, 0.33, 0.67)));
 }
