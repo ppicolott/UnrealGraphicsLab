@@ -1,12 +1,39 @@
-// Inigo Quilez technique:
-float3 GL_Rainbow(float T)
-{
-    return 0.5 + 0.5 * cos(6.28318 * (T + float3(0.0, 0.33, 0.67)));
-}
+#pragma once
+#include "/GraphicsLab/Shared/Common.ush"
+
+// Seed offsets for GL_Hash21 (arbitrary non-integers)
+static const float HC_SEED_OFFSET_X = 3.1;
+static const float HC_SEED_OFFSET_Y = 7.7;
+static const float HC_SEED_SIZE = 11.3;
+static const float HC_SEED_TILT = 17.9;
 
 float3 HC_HoloFoil(float2 UV, float3 ViewTS, float Frequency, float ViewInfluence)
 {
     float Phase = (UV.x + UV.y) * Frequency              // diagonal bands across the card
                 + (ViewTS.x + ViewTS.y) * ViewInfluence; // shifted by the angle
     return GL_Rainbow(Phase);
+}
+
+float HC_Sparkle(float2 UV, float3 ViewTS, float Density, float Sharpness, float Shape)
+{
+    float2 Grid = UV * Density;
+    float2 Cell = floor(Grid);
+    float2 Local = frac(Grid) - 0.5; // -0.5..0.5
+    
+    // Random flake shape
+    float2 Offset = float2(GL_Hash21(Cell + HC_SEED_OFFSET_X), GL_Hash21(Cell + HC_SEED_OFFSET_Y)) - 0.5;
+    float Size = lerp(0.08, 0.25, GL_Hash21(Cell + HC_SEED_SIZE));
+    float2 FlakePos = Local - Offset * 0.5;
+    float DiamondDist = abs(FlakePos.x) + abs(FlakePos.y);
+    float RoundDist = length(FlakePos);
+    float Dist = Shape > 0.5 ? DiamondDist : RoundDist; // 0 = round, 1 = diamond
+    float Dot = saturate(1.0 - Dist / Size); // 1 at the center, 0 at the edge
+    Dot *= Dot; // softer falloff
+    
+    // Random flake tilt
+    float2 Tilt = float2(GL_Hash21(Cell), GL_Hash21(Cell + HC_SEED_TILT)) * 2.0 - 1.0;
+    float3 FacetNormal = normalize(float3(Tilt * 0.5, 1.0));
+    float Align = saturate(dot(normalize(ViewTS), FacetNormal));
+    
+    return Dot * pow(Align, Sharpness);
 }
