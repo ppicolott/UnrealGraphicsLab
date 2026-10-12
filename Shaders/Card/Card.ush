@@ -68,14 +68,6 @@ float4 Card_Layout(float2 UV, float Aspect, float Radius, float Border, float Fu
     return float4(Frame, Art, Text, Title);
 }
 
-float3 Card_HoloFoil(float2 UV, float3 ViewTS, float Frequency, float ViewInfluence)
-{
-    float Phase = (UV.x + UV.y) * Frequency // diagonal bands across the card
-                + (ViewTS.x + ViewTS.y) * ViewInfluence; // shifted by the angle
-    // return GL_Rainbow(Phase);
-    return GL_Spectrum(Phase);
-}
-
 float Card_Sparkle(float2 UV, float3 ViewTS, float Density, float Sharpness, float Shape)
 {
     float2 Grid = UV * Density;
@@ -98,4 +90,22 @@ float Card_Sparkle(float2 UV, float3 ViewTS, float Density, float Sharpness, flo
     float Align = saturate(dot(normalize(ViewTS), FacetNormal));
     
     return Dot * pow(Align, Sharpness);
+}
+
+float3 Card_Sheen(float2 UV, float3 ViewTS, float Frequency, float Width, float ViewInfluence, float Whiteness)
+{
+    float Phase = (UV.x + UV.y) * Frequency // diagonal stripes
+                + (ViewTS.x + ViewTS.y) * ViewInfluence; // slide with the angle
+    float Dist = abs(frac(Phase) - 0.5);
+    float Band = smoothstep(Width, 0.0, Dist);
+    float3 Color = lerp(GL_Spectrum((frac(Phase) - 0.5) / (2.0 * Width) + 0.5), 1.0, Whiteness);
+    return Band * Color;
+}
+
+float3 Card_HoloFoil(float2 UV, float3 ViewTS, float Frequency, float ViewInfluence)
+{
+    float Phase = (UV.x + UV.y) * Frequency // diagonal bands across the card
+                + (ViewTS.x + ViewTS.y) * ViewInfluence; // shifted by the angle
+    // return GL_Rainbow(Phase);
+    return GL_Spectrum(Phase);
 }
