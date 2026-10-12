@@ -48,7 +48,8 @@ float3 Card_HoloFoil(float2 UV, float3 ViewTS, float Frequency, float ViewInflue
 {
     float Phase = (UV.x + UV.y) * Frequency // diagonal bands across the card
                 + (ViewTS.x + ViewTS.y) * ViewInfluence; // shifted by the angle
-    return GL_Rainbow(Phase);
+    // return GL_Rainbow(Phase);
+    return GL_Spectrum(Phase);
 }
 
 float Card_Sparkle(float2 UV, float3 ViewTS, float Density, float Sharpness, float Shape)
