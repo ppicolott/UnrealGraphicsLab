@@ -8,7 +8,7 @@ static const float HC_SEED_SIZE = 11.3;
 static const float HC_SEED_TILT = 17.9;
 
 // Card layout masks (R = frame, G = art, B = text, A = title bar)
-float4 HC_CardLayout(float2 UV, float Aspect, float Radius, float Border, float FullArt)
+float4 HC_CardLayout(float2 UV, float Aspect, float Radius, float Border, float FullArt, float Overflow, out float2 ArtUV, out float ArtBounds)
 {
     float2 P = UV - 0.5;
     float2 CardHalf = float2(0.5 * Aspect, 0.5);
@@ -19,8 +19,13 @@ float4 HC_CardLayout(float2 UV, float Aspect, float Radius, float Border, float 
     
     // V grows downwards, so negative y = top
     float2 ArtHalf = float2(CardHalf.x - 2.0 * Border, 0.22);
-    float ArtWindow = GL_Fill(GL_SDRoundedBox(P - float2(0.0, -0.13), ArtHalf, 0.01));
+    float2 ArtCenter = float2(0.0, -0.13);
+    float ArtWindow = GL_Fill(GL_SDRoundedBox(P - ArtCenter, ArtHalf, 0.01));
     float Art = FullArt > 0.5 ? Inner : ArtWindow;
+    float2 ArtBoxCenter = FullArt > 0.5 ? float2(0.0, 0.0) : ArtCenter;
+    float2 ArtBoxHalf = (FullArt > 0.5 ? CardHalf - Border : ArtHalf) + Overflow;
+    ArtUV = (P - ArtBoxCenter) / (2.0 * ArtBoxHalf) + 0.5;
+    ArtBounds = GL_Fill(GL_SDRoundedBox(P - ArtBoxCenter, ArtBoxHalf, 0.0));
     
     float2 TextHalf = float2(ArtHalf.x, 0.12);
     float Text = GL_Fill(GL_SDRoundedBox(P - float2(0.0, 0.30), TextHalf, 0.01));
