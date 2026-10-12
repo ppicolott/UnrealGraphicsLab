@@ -12,12 +12,12 @@ static const float CARD_ART_CENTER_Y = -0.13;
 static const float CARD_ART_HALF_HEIGHT  = 0.22;
 static const float CARD_TEXT_CENTER_Y = 0.28;
 static const float CARD_TEXT_HALF_HEIGHT = 0.14;
-static const float CARD_TITLE_CENTER_Y = -0.395;
+static const float CARD_TITLE_CENTER_Y = -0.4;
 static const float CARD_TITLE_HALF_HEIGHT = 0.03;
 
 // Card layout masks (R = frame, G = art, B = text, A = title bar)
 float4 Card_Layout(float2 UV, float Aspect, float Radius, float Border, float FullArt, float Overflow,
-                   float ForegroundAspect, float BackgroundAspect,
+                   float ForegroundAspect, float BackgroundAspect, float BackgroundZoom, float2 BackgroundOffset,
                    out float2 ArtUV, out float ArtBounds, out float2 BackgroundUV)
 {
     float2 P = UV - 0.5;
@@ -47,7 +47,10 @@ float4 Card_Layout(float2 UV, float Aspect, float Radius, float Border, float Fu
     BackgroundUV = (P - ArtBoxCenter) / (2.0 * WindowHalf) + 0.5;
     float CoverRatio = BackgroundAspect / (WindowHalf.x / WindowHalf.y);
     float2 CoverScale = CoverRatio > 1.0 ? float2(1.0 / CoverRatio, 1.0) : float2(1.0, CoverRatio);
-    BackgroundUV = (BackgroundUV - 0.5) * CoverScale + 0.5;
+    
+    float Zoom = max(BackgroundZoom, 1.0);
+    float2 Visible = CoverScale / Zoom;
+    BackgroundUV = (BackgroundUV - 0.5) * Visible + 0.5 + BackgroundOffset * (1.0 - Visible) * 0.5;
     
     float2 TextHalf = float2(ArtHalf.x, CARD_TEXT_HALF_HEIGHT);
     float Text = GL_Fill(GL_SDRoundedBox(P - float2(0.0, CARD_TEXT_CENTER_Y), TextHalf, 0.01));
