@@ -7,6 +7,14 @@ static const float HC_SEED_OFFSET_Y = 7.7;
 static const float HC_SEED_SIZE = 11.3;
 static const float HC_SEED_TILT = 17.9;
 
+// Layout boxes in card space (y: -0.5 top .. 0.5 bottom)
+static const float HC_ART_CENTER_Y = -0.13;
+static const float HC_ART_HALF_HEIGHT  = 0.22;
+static const float HC_TEXT_CENTER_Y = 0.28;
+static const float HC_TEXT_HALF_HEIGHT = 0.14;
+static const float HC_TITLE_CENTER_Y = -0.395;
+static const float HC_TITLE_HALF_HEIGHT = 0.03;
+
 // Card layout masks (R = frame, G = art, B = text, A = title bar)
 float4 HC_CardLayout(float2 UV, float Aspect, float Radius, float Border, float FullArt, float Overflow, out float2 ArtUV, out float ArtBounds)
 {
@@ -18,8 +26,8 @@ float4 HC_CardLayout(float2 UV, float Aspect, float Radius, float Border, float 
     float Frame = Card - Inner;
     
     // V grows downwards, so negative y = top
-    float2 ArtHalf = float2(CardHalf.x - 2.0 * Border, 0.22);
-    float2 ArtCenter = float2(0.0, -0.13);
+    float2 ArtHalf = float2(CardHalf.x - 2.0 * Border, HC_ART_HALF_HEIGHT);
+    float2 ArtCenter = float2(0.0, HC_ART_CENTER_Y);
     float ArtWindow = GL_Fill(GL_SDRoundedBox(P - ArtCenter, ArtHalf, 0.01));
     float Art = FullArt > 0.5 ? Inner : ArtWindow;
     float2 ArtBoxCenter = FullArt > 0.5 ? float2(0.0, 0.0) : ArtCenter;
@@ -27,11 +35,11 @@ float4 HC_CardLayout(float2 UV, float Aspect, float Radius, float Border, float 
     ArtUV = (P - ArtBoxCenter) / (2.0 * ArtBoxHalf) + 0.5;
     ArtBounds = GL_Fill(GL_SDRoundedBox(P - ArtBoxCenter, ArtBoxHalf, 0.0));
     
-    float2 TextHalf = float2(ArtHalf.x, 0.12);
-    float Text = GL_Fill(GL_SDRoundedBox(P - float2(0.0, 0.30), TextHalf, 0.01));
+    float2 TextHalf = float2(ArtHalf.x, HC_TEXT_HALF_HEIGHT);
+    float Text = GL_Fill(GL_SDRoundedBox(P - float2(0.0, HC_TEXT_CENTER_Y), TextHalf, 0.01));
     
-    float2 TitleHalf = float2(ArtHalf.x, 0.03);
-    float Title = GL_Fill(GL_SDRoundedBox(P - float2(0.0, -0.395), TitleHalf, 0.01));
+    float2 TitleHalf = float2(ArtHalf.x, HC_TITLE_HALF_HEIGHT);
+    float Title = GL_Fill(GL_SDRoundedBox(P - float2(0.0, HC_TITLE_CENTER_Y), TitleHalf, 0.01));
     
     return float4(Frame, Art, Text, Title);
 }
