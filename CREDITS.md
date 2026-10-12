@@ -7,4 +7,4 @@ Third-party assets used in UnrealGraphicsLab, grouped by effect.
 | Asset | Used as | Author | Source | License |
 |---|---|---|---|---|
 | Pembroke Welsh Corgi, Puppy, Dog | `T_Corgi` (card foreground) | [CreativeCanvasDesign](https://pixabay.com/users/creativecanvasdesign-45016655/) | [Pixabay](https://pixabay.com/vectors/pembroke-welsh-corgi-puppy-dog-cute-10477106/) | [Pixabay Content License](https://pixabay.com/service/license-summary/) |
-| Ai Generated, Landscape, Sky | `T_Background` (card background) | [rahalune](https://pixabay.com/users/rahalune-36602037/) (AI-generated) | [Pixabay](https://pixabay.com/illustrations/ai-generated-landscape-sky-clouds-8969819/) | [Pixabay Content License](https://pixabay.com/service/license-summary/) |
+| Sunlit Meadow Framed by Trees with Blooming Flowers | `T_Background` (card background) | [TyliJura](https://pixabay.com/users/tylijura-22072131/) (AI-generated) | [Pixabay](https://pixabay.com/illustrations/ai-generated-meadow-nature-9419882/) | [Pixabay Content License](https://pixabay.com/service/license-summary/) |
