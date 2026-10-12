@@ -19,7 +19,7 @@ static const float CARD_TITLE_HALF_HEIGHT = 0.03;
 float4 Card_Layout(float2 UV, float Aspect, float Radius, float Border, float FullArt, float Overflow,
                    float ForegroundAspect, float BackgroundAspect, float BackgroundZoom, float2 BackgroundOffset,
                    float3 ViewTS, float ForegroundDepth, float BackgroundDepth,
-                   out float2 ArtUV, out float ArtBounds, out float2 BackgroundUV)
+                   out float2 ArtUV, out float ArtBounds, out float2 BackgroundUV, out float2 CardUV)
 {
     float2 P = UV - 0.5;
     
@@ -29,6 +29,8 @@ float4 Card_Layout(float2 UV, float Aspect, float Radius, float Border, float Fu
     float2 PB = P - ViewShift * BackgroundDepth;
     
     float2 CardHalf = float2(0.5 * Aspect, 0.5);
+    
+    CardUV = P / (2.0 * CardHalf) + 0.5;
     
     float Card = GL_Fill(GL_SDRoundedBox(P, CardHalf, Radius));
     float Inner = GL_Fill(GL_SDRoundedBox(P, CardHalf - Border, max(Radius - Border, 0.0)));
