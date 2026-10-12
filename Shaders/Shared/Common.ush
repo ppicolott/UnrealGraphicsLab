@@ -34,3 +34,17 @@ float3 GL_Spectrum(float T)
     float3 C = abs(frac(T + float3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0) - 1.0;
     return saturate(C);
 }
+
+float GL_SDStar5(float2 P, float R, float InnerRatio)
+{
+    const float2 K1 = float2(0.809016994, -0.587785252);
+    const float2 K2 = float2(-K1.x, K1.y);
+    P.x = abs(P.x);
+    P -= 2.0 * max(dot(K1, P), 0.0) * K1; // fold into one arm of the star
+    P -= 2.0 * max(dot(K2, P), 0.0) * K2;
+    P.x = abs(P.x);
+    P.y -= R;
+    float2 BA = InnerRatio * float2(-K1.y, K1.x) - float2(0.0, 1.0);
+    float H = clamp(dot(P, BA) / dot(BA, BA), 0.0, R);
+    return length(P - BA * H) * sign(P.y * BA.x - P.x * BA.y);
+}

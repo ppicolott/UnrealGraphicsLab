@@ -15,6 +15,9 @@ static const float CARD_TEXT_HALF_HEIGHT = 0.14;
 static const float CARD_TITLE_CENTER_Y = -0.4;
 static const float CARD_TITLE_HALF_HEIGHT = 0.03;
 
+static const float CARD_SEED_STAR = 23.7;
+static const float CARD_SEED_STAR_SIZE = 29.3;
+
 // Card layout masks (R = frame, G = art, B = text, A = title bar)
 float4 Card_Layout(float2 UV, float Aspect, float Radius, float Border, float FullArt, float Overflow,
                    float ForegroundAspect, float BackgroundAspect, float BackgroundZoom, float2 BackgroundOffset,
@@ -110,4 +113,35 @@ float3 Card_HoloFoil(float2 UV, float3 ViewTS, float Frequency, float ViewInflue
                 + (ViewTS.x + ViewTS.y) * ViewInfluence; // shifted by the angle
     // return GL_Rainbow(Phase);
     return GL_Spectrum(Phase);
+}
+
+float Card_Stars(float2 UV, float Aspect, float Density, float Size, float Coverage)
+{
+    float2 Grid = UV * float2(Aspect, 1.0) * Density;
+    float2 Cell = floor(Grid);
+    float2 Local = frac(Grid) - 0.5; // -0.5..0.5
+    
+    float Present = GL_Hash21(Cell + CARD_SEED_STAR) < Coverage ? 1.0 : 0.0;
+    float Radius = Size * lerp(0.5, 1.0, GL_Hash21(Cell + CARD_SEED_STAR_SIZE));
+    float2 Offset = float2(GL_Hash21(Cell + CARD_SEED_OFFSET_X), GL_Hash21(Cell + CARD_SEED_OFFSET_Y)) - 0.5;
+    float2 StarPos = Local - Offset * (1.0 - 2.0 * Radius);
+    StarPos.y = -StarPos.y; // V grows downwards, flip so the star points up
+    
+    float D = GL_SDStar5(StarPos, Radius, 0.45);
+    float AA = length(fwidth(Grid));
+    return saturate(0.5 - D / AA) * Present;
+}
+
+// Procedural foil masks: 0 = stars, 1 = diagonal stripes, 2 = diamonds
+float Card_FoilPattern(float2 UV, float Aspect, float Type, float Density, float Size, float Coverage)
+{
+    float2 Grid = UV * float2(Aspect, 1.0) * Density;
+    float2 Local = frac(Grid) - 0.5; // -0.5..0.5
+
+    float Stars = Card_Stars(UV, Aspect, Density, Size, Coverage);
+    float Stripes = GL_Fill(abs(frac(Grid.x + Grid.y) - 0.5) - Size);
+    float Diamonds = GL_Fill(abs(Local.x) + abs(Local.y) - Size);
+
+    float T = round(Type);
+    return T < 0.5 ? Stars : T < 1.5 ? Stripes : Diamonds;
 }
