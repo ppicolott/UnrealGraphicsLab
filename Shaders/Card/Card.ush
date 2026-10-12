@@ -16,7 +16,7 @@ static const float CARD_TITLE_CENTER_Y = -0.395;
 static const float CARD_TITLE_HALF_HEIGHT = 0.03;
 
 // Card layout masks (R = frame, G = art, B = text, A = title bar)
-float4 Card_Layout(float2 UV, float Aspect, float Radius, float Border, float FullArt, float Overflow, out float2 ArtUV, out float ArtBounds)
+float4 Card_Layout(float2 UV, float Aspect, float Radius, float Border, float FullArt, float Overflow, float ImageAspect, out float2 ArtUV, out float ArtBounds)
 {
     float2 P = UV - 0.5;
     float2 CardHalf = float2(0.5 * Aspect, 0.5);
@@ -32,8 +32,14 @@ float4 Card_Layout(float2 UV, float Aspect, float Radius, float Border, float Fu
     float Art = FullArt > 0.5 ? Inner : ArtWindow;
     float2 ArtBoxCenter = FullArt > 0.5 ? float2(0.0, 0.0) : ArtCenter;
     float2 ArtBoxHalf = (FullArt > 0.5 ? CardHalf - Border : ArtHalf) + Overflow;
+    
     ArtUV = (P - ArtBoxCenter) / (2.0 * ArtBoxHalf) + 0.5;
+    float FitRatio = ImageAspect / (ArtBoxHalf.x / ArtBoxHalf.y);
+    float2 FitScale = FitRatio > 1.0 ? float2(1.0, FitRatio) : float2(1.0 / FitRatio, 1.0);
+    ArtUV = (ArtUV - 0.5) * FitScale + 0.5;
+    
     ArtBounds = GL_Fill(GL_SDRoundedBox(P - ArtBoxCenter, ArtBoxHalf, 0.0));
+    ArtBounds *= all(ArtUV == saturate(ArtUV)) ? 1.0 : 0.0;
     
     float2 TextHalf = float2(ArtHalf.x, CARD_TEXT_HALF_HEIGHT);
     float Text = GL_Fill(GL_SDRoundedBox(P - float2(0.0, CARD_TEXT_CENTER_Y), TextHalf, 0.01));
