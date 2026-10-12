@@ -2,21 +2,21 @@
 #include "/GraphicsLab/Shared/Common.ush"
 
 // Seed offsets for GL_Hash21 (arbitrary non-integers)
-static const float HC_SEED_OFFSET_X = 3.1;
-static const float HC_SEED_OFFSET_Y = 7.7;
-static const float HC_SEED_SIZE = 11.3;
-static const float HC_SEED_TILT = 17.9;
+static const float CARD_SEED_OFFSET_X = 3.1;
+static const float CARD_SEED_OFFSET_Y = 7.7;
+static const float CARD_SEED_SIZE = 11.3;
+static const float CARD_SEED_TILT = 17.9;
 
 // Layout boxes in card space (y: -0.5 top .. 0.5 bottom)
-static const float HC_ART_CENTER_Y = -0.13;
-static const float HC_ART_HALF_HEIGHT  = 0.22;
-static const float HC_TEXT_CENTER_Y = 0.28;
-static const float HC_TEXT_HALF_HEIGHT = 0.14;
-static const float HC_TITLE_CENTER_Y = -0.395;
-static const float HC_TITLE_HALF_HEIGHT = 0.03;
+static const float CARD_ART_CENTER_Y = -0.13;
+static const float CARD_ART_HALF_HEIGHT  = 0.22;
+static const float CARD_TEXT_CENTER_Y = 0.28;
+static const float CARD_TEXT_HALF_HEIGHT = 0.14;
+static const float CARD_TITLE_CENTER_Y = -0.395;
+static const float CARD_TITLE_HALF_HEIGHT = 0.03;
 
 // Card layout masks (R = frame, G = art, B = text, A = title bar)
-float4 HC_CardLayout(float2 UV, float Aspect, float Radius, float Border, float FullArt, float Overflow, out float2 ArtUV, out float ArtBounds)
+float4 Card_Layout(float2 UV, float Aspect, float Radius, float Border, float FullArt, float Overflow, out float2 ArtUV, out float ArtBounds)
 {
     float2 P = UV - 0.5;
     float2 CardHalf = float2(0.5 * Aspect, 0.5);
@@ -26,8 +26,8 @@ float4 HC_CardLayout(float2 UV, float Aspect, float Radius, float Border, float 
     float Frame = Card - Inner;
     
     // V grows downwards, so negative y = top
-    float2 ArtHalf = float2(CardHalf.x - 2.0 * Border, HC_ART_HALF_HEIGHT);
-    float2 ArtCenter = float2(0.0, HC_ART_CENTER_Y);
+    float2 ArtHalf = float2(CardHalf.x - 2.0 * Border, CARD_ART_HALF_HEIGHT);
+    float2 ArtCenter = float2(0.0, CARD_ART_CENTER_Y);
     float ArtWindow = GL_Fill(GL_SDRoundedBox(P - ArtCenter, ArtHalf, 0.01));
     float Art = FullArt > 0.5 ? Inner : ArtWindow;
     float2 ArtBoxCenter = FullArt > 0.5 ? float2(0.0, 0.0) : ArtCenter;
@@ -35,31 +35,31 @@ float4 HC_CardLayout(float2 UV, float Aspect, float Radius, float Border, float 
     ArtUV = (P - ArtBoxCenter) / (2.0 * ArtBoxHalf) + 0.5;
     ArtBounds = GL_Fill(GL_SDRoundedBox(P - ArtBoxCenter, ArtBoxHalf, 0.0));
     
-    float2 TextHalf = float2(ArtHalf.x, HC_TEXT_HALF_HEIGHT);
-    float Text = GL_Fill(GL_SDRoundedBox(P - float2(0.0, HC_TEXT_CENTER_Y), TextHalf, 0.01));
+    float2 TextHalf = float2(ArtHalf.x, CARD_TEXT_HALF_HEIGHT);
+    float Text = GL_Fill(GL_SDRoundedBox(P - float2(0.0, CARD_TEXT_CENTER_Y), TextHalf, 0.01));
     
-    float2 TitleHalf = float2(ArtHalf.x, HC_TITLE_HALF_HEIGHT);
-    float Title = GL_Fill(GL_SDRoundedBox(P - float2(0.0, HC_TITLE_CENTER_Y), TitleHalf, 0.01));
+    float2 TitleHalf = float2(ArtHalf.x, CARD_TITLE_HALF_HEIGHT);
+    float Title = GL_Fill(GL_SDRoundedBox(P - float2(0.0, CARD_TITLE_CENTER_Y), TitleHalf, 0.01));
     
     return float4(Frame, Art, Text, Title);
 }
 
-float3 HC_HoloFoil(float2 UV, float3 ViewTS, float Frequency, float ViewInfluence)
+float3 Card_HoloFoil(float2 UV, float3 ViewTS, float Frequency, float ViewInfluence)
 {
-    float Phase = (UV.x + UV.y) * Frequency              // diagonal bands across the card
+    float Phase = (UV.x + UV.y) * Frequency // diagonal bands across the card
                 + (ViewTS.x + ViewTS.y) * ViewInfluence; // shifted by the angle
     return GL_Rainbow(Phase);
 }
 
-float HC_Sparkle(float2 UV, float3 ViewTS, float Density, float Sharpness, float Shape)
+float Card_Sparkle(float2 UV, float3 ViewTS, float Density, float Sharpness, float Shape)
 {
     float2 Grid = UV * Density;
     float2 Cell = floor(Grid);
     float2 Local = frac(Grid) - 0.5; // -0.5..0.5
     
     // Random flake shape
-    float2 Offset = float2(GL_Hash21(Cell + HC_SEED_OFFSET_X), GL_Hash21(Cell + HC_SEED_OFFSET_Y)) - 0.5;
-    float Size = lerp(0.08, 0.25, GL_Hash21(Cell + HC_SEED_SIZE));
+    float2 Offset = float2(GL_Hash21(Cell + CARD_SEED_OFFSET_X), GL_Hash21(Cell + CARD_SEED_OFFSET_Y)) - 0.5;
+    float Size = lerp(0.08, 0.25, GL_Hash21(Cell + CARD_SEED_SIZE));
     float2 FlakePos = Local - Offset * 0.5;
     float DiamondDist = abs(FlakePos.x) + abs(FlakePos.y);
     float RoundDist = length(FlakePos);
@@ -68,7 +68,7 @@ float HC_Sparkle(float2 UV, float3 ViewTS, float Density, float Sharpness, float
     Dot *= Dot; // softer falloff
     
     // Random flake tilt
-    float2 Tilt = float2(GL_Hash21(Cell), GL_Hash21(Cell + HC_SEED_TILT)) * 2.0 - 1.0;
+    float2 Tilt = float2(GL_Hash21(Cell), GL_Hash21(Cell + CARD_SEED_TILT)) * 2.0 - 1.0;
     float3 FacetNormal = normalize(float3(Tilt * 0.5, 1.0));
     float Align = saturate(dot(normalize(ViewTS), FacetNormal));
     
