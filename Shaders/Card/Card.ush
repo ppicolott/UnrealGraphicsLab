@@ -1,25 +1,20 @@
 #pragma once
 #include "/GraphicsLab/Shared/Common.ush"
 
-// Seed offsets for GL_Hash21 (arbitrary non-integers)
+// Seed offsets for GL_Hash21 (arbitrary nonintegers)
 static const float CARD_SEED_OFFSET_X = 3.1;
 static const float CARD_SEED_OFFSET_Y = 7.7;
 static const float CARD_SEED_SIZE = 11.3;
 static const float CARD_SEED_TILT = 17.9;
 
-// Layout boxes in card space (y: -0.5 top .. 0.5 bottom)
 static const float CARD_ART_CENTER_Y = -0.13;
 static const float CARD_ART_HALF_HEIGHT  = 0.22;
-static const float CARD_TEXT_CENTER_Y = 0.28;
-static const float CARD_TEXT_HALF_HEIGHT = 0.14;
-static const float CARD_TITLE_CENTER_Y = -0.4;
-static const float CARD_TITLE_HALF_HEIGHT = 0.03;
 
 static const float CARD_SEED_STAR = 23.7;
 static const float CARD_SEED_STAR_SIZE = 29.3;
 
-// Card layout masks (R = frame, G = art, B = text, A = title bar)
-float4 Card_Layout(float2 UV, float Aspect, float Radius, float Border, float FullArt, float Overflow,
+// Card layout masks (R = frame, G = art)
+float2 Card_Layout(float2 UV, float Aspect, float Radius, float Border, float FullArt, float Overflow,
                    float ForegroundAspect, float BackgroundAspect, float BackgroundZoom, float2 BackgroundOffset,
                    float3 ViewTS, float ForegroundDepth, float BackgroundDepth,
                    out float2 ArtUV, out float ArtBounds, out float2 BackgroundUV, out float2 CardUV)
@@ -64,13 +59,7 @@ float4 Card_Layout(float2 UV, float Aspect, float Radius, float Border, float Fu
     float2 Visible = CoverScale / Zoom;
     BackgroundUV = (BackgroundUV - 0.5) * Visible + 0.5 + BackgroundOffset * (1.0 - Visible) * 0.5;
     
-    float2 TextHalf = float2(ArtHalf.x, CARD_TEXT_HALF_HEIGHT);
-    float Text = GL_Fill(GL_SDRoundedBox(P - float2(0.0, CARD_TEXT_CENTER_Y), TextHalf, 0.01));
-    
-    float2 TitleHalf = float2(ArtHalf.x, CARD_TITLE_HALF_HEIGHT);
-    float Title = GL_Fill(GL_SDRoundedBox(P - float2(0.0, CARD_TITLE_CENTER_Y), TitleHalf, 0.01));
-    
-    return float4(Frame, Art, Text, Title);
+    return float2(Frame, Art);
 }
 
 float Card_Sparkle(float2 UV, float3 ViewTS, float Density, float Sharpness, float Shape)
