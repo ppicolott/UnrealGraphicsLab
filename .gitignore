@@ -47,6 +47,10 @@
 SourceArt/**/*.png
 SourceArt/**/*.tga
 
+# Source images belong in SourceArt/, never in Content/
+Content/**/*.png
+Content/**/*.tga
+
 # Binary Files
 Binaries/*
 Plugins/**/Binaries/*
