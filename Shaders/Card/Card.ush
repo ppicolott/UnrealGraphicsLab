@@ -13,6 +13,8 @@ static const float CARD_ART_HALF_HEIGHT  = 0.22;
 static const float CARD_SEED_STAR = 23.7;
 static const float CARD_SEED_STAR_SIZE = 29.3;
 
+static const float CARD_BASE_ROUGHNESS = 0.5;
+
 // Card silhouette for the Opacity Mask (1 = inside the rounded card, 0 = outside)
 float Card_OpacityMask(float2 UV, float Aspect, float Radius)
 {
@@ -141,4 +143,20 @@ float Card_FoilPattern(float2 UV, float Aspect, float Type, float Density, float
 
     float T = round(Type);
     return T < 0.5 ? Stars : T < 1.5 ? Stripes : Diamonds;
+}
+
+// Surface response of the frame and art foil (returns Roughness)
+float Card_Surface(float MetalAmount, float HoloAmount, float ArtFoilAmount,
+                   float MetalRoughness, float HoloRoughness,
+                   float3 MetalNormal, float MetalNormalStrength,
+                   out float Metallic, out float3 Normal)
+{
+    float Roughness = lerp(CARD_BASE_ROUGHNESS, MetalRoughness, MetalAmount);
+    Roughness = lerp(Roughness, HoloRoughness, HoloAmount);
+    
+    Metallic = max(max(HoloAmount, MetalAmount), ArtFoilAmount);
+    
+    Normal = lerp(float3(0.0, 0.0, 1.0), MetalNormal, MetalAmount * MetalNormalStrength);
+    
+    return Roughness;
 }
