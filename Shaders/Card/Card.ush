@@ -13,6 +13,14 @@ static const float CARD_ART_HALF_HEIGHT  = 0.22;
 static const float CARD_SEED_STAR = 23.7;
 static const float CARD_SEED_STAR_SIZE = 29.3;
 
+// Card silhouette for the Opacity Mask (1 = inside the rounded card, 0 = outside)
+float Card_OpacityMask(float2 UV, float Aspect, float Radius)
+{
+    float2 P = UV - 0.5;
+    float D = GL_SDRoundedBox(P, float2(0.5 * Aspect, 0.5), Radius);
+    return D <= 0.0 ? 1.0 : 0.0;
+}
+
 // Card layout masks (R = frame, G = art)
 float2 Card_Layout(float2 UV, float Aspect, float Radius, float Border, float FullArt, float Overflow,
                    float ForegroundAspect, float BackgroundAspect, float BackgroundZoom, float2 BackgroundOffset,
