@@ -6,7 +6,10 @@
 
 UCardEnergyIconWidget::UCardEnergyIconWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-	if (!HasAnyFlags(RF_ClassDefaultObject)) return;
+	if (!HasAnyFlags(RF_ClassDefaultObject))
+	{
+		return;
+	}
 	
 	auto AddStyle = [this](ECardEnergyType Type, const TCHAR* IconPath, const TCHAR* ColorHex)
 	{
@@ -31,9 +34,12 @@ void UCardEnergyIconWidget::SetEnergyType(ECardEnergyType InEnergyType)
 	EnergyType = InEnergyType;
 	
 	const UCardEnergyIconWidget* Defaults = GetClass()->GetDefaultObject<UCardEnergyIconWidget>();
-	
 	const FCardEnergyStyle* Style = Defaults->Styles.Find(EnergyType);
-	if (!Style) return;
+	
+	if (!Style)
+	{
+		return;
+	}
 	
 	TypeIcon->SetBrushFromTexture(Style->Icon);
 	CircleImage->SetColorAndOpacity(Style->CircleColor);

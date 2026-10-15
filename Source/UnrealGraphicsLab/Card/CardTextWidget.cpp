@@ -12,7 +12,10 @@ void UCardTextWidget::SetCardData(UCardData* InCardData)
 
 void UCardTextWidget::Refresh()
 {
-	if (!CardData) return;
+	if (!CardData)
+	{
+		return;
+	}
 	
 	// Header
 	TitleText->SetText(CardData->Name);
