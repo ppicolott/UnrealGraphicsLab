@@ -118,12 +118,35 @@ float3 Card_Sheen(float2 UV, float3 ViewTS, float Frequency, float Width, float 
     return Band * Color;
 }
 
-float3 Card_HoloFoil(float2 UV, float3 ViewTS, float Frequency, float ViewInfluence)
+// Foil color: tinted metal facing the camera, rainbow towards grazing angles
+float3 Card_HoloFoil(float2 UV, float3 ViewTS, float Frequency, float ViewInfluence, float3 Tint, float Rainbow)
 {
     float Phase = (UV.x + UV.y) * Frequency // diagonal bands across the card
                 + (ViewTS.x + ViewTS.y) * ViewInfluence; // shifted by the angle
-    // return GL_Rainbow(Phase);
-    return GL_Spectrum(Phase);
+    
+    float3 Spectrum = GL_Spectrum(Phase);
+    
+    // Tinted foil keeps the bands as brightness only
+    float3 Tinted = Tint * lerp(0.6, 1.0, 0.5 + 0.5 * cos(Phase * 2.0 * PI));
+    
+    // 0 facing the camera, grows as the card tilts away
+    float Grazing = 1.0 - saturate(normalize(ViewTS).z);
+    float RainbowMix = saturate(Rainbow * (1.0 + Grazing));
+    
+    return lerp(Tinted, Spectrum, RainbowMix);
+}
+
+// Gradient map from the art's brightness to gold: dark shadows, Tint midtones, pale highlights
+float3 Card_GoldWash(float3 Color, float3 Tint, float Amount)
+{
+    // Rec. 709 luminance; sqrt brings linear back to roughly perceptual brightness
+    float Luma = sqrt(dot(Color, float3(0.2126, 0.7152, 0.0722)));
+    
+    float3 Dark = Tint * 0.1;
+    float3 Light = lerp(Tint, 1.0, 0.5);
+    float3 Gold = Luma < 0.5 ? lerp(Dark, Tint, Luma * 2.0) : lerp(Tint, Light, Luma * 2.0 - 1.0);
+    
+    return lerp(Color, Gold, Amount);
 }
 
 float Card_Stars(float2 UV, float Aspect, float Density, float Size, float Coverage)
@@ -158,15 +181,15 @@ float Card_FoilPattern(float2 UV, float Aspect, float Type, float Density, float
 }
 
 // Surface response of the frame and art foil (returns Roughness)
-float Card_Surface(float MetalAmount, float HoloAmount, float ArtFoilAmount,
-                   float MetalRoughness, float HoloRoughness,
-                   float3 MetalNormal, float MetalNormalStrength,
+float Card_Surface(float MetalAmount, float HoloAmount, float ArtFoilAmount, float GoldAmount,
+                   float MetalRoughness, float HoloRoughness, float3 MetalNormal, float MetalNormalStrength,
                    out float Metallic, out float3 Normal)
 {
     float Roughness = lerp(CARD_BASE_ROUGHNESS, MetalRoughness, MetalAmount);
     Roughness = lerp(Roughness, HoloRoughness, HoloAmount);
+    Roughness = lerp(Roughness, HoloRoughness, GoldAmount);
     
-    Metallic = max(max(HoloAmount, MetalAmount), ArtFoilAmount);
+    Metallic = max(max(max(HoloAmount, MetalAmount), ArtFoilAmount), GoldAmount);
     
     Normal = lerp(float3(0.0, 0.0, 1.0), MetalNormal, MetalAmount * MetalNormalStrength);
     
@@ -186,8 +209,8 @@ float3 Card_BaseColor(float2 Layout, float3 CardBaseColor,
                       float3 Holo, float HoloAmount,
                       float3 ArtWindow, float ArtWindowOpacity,
                       float3 Foreground, float ForegroundMask,
-                      float ArtFoilAmount,
-                      float4 Text, float TextAmount)
+                      float ArtFoilAmount, float3 GoldTint, float BackgroundGoldWash, float ForegroundGoldWash,
+                      float4 Text, float TextAmount, out float GoldMask)
 {
     float Frame = Layout.x;
     float Art = Layout.y;
@@ -195,6 +218,14 @@ float3 Card_BaseColor(float2 Layout, float3 CardBaseColor,
     // Frame: Plain color, then metal, then holo
     float3 FrameRGB = lerp(FrameColor, MetalColor, MetalAmount);
     FrameRGB = lerp(FrameRGB, Holo, HoloAmount);
+    
+    // Gold wash on the art (0 = original colors)
+    ArtWindow = Card_GoldWash(ArtWindow, GoldTint, BackgroundGoldWash);
+    Foreground = Card_GoldWash(Foreground, GoldTint, ForegroundGoldWash);
+    
+    // Where the wash turns the art into metal (text stays matte ink)
+    GoldMask = max(Art * ArtWindowOpacity * BackgroundGoldWash, ForegroundMask * ForegroundGoldWash);
+    GoldMask *= 1.0 - TextAmount;
     
     float3 Color = lerp(CardBaseColor, FrameRGB, Frame);
     Color = lerp(Color, ArtWindow, Art * ArtWindowOpacity);
