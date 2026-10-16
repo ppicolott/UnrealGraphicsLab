@@ -15,6 +15,8 @@ static const float CARD_SEED_STAR_SIZE = 29.3;
 
 static const float CARD_BASE_ROUGHNESS = 0.5;
 
+static const float CARD_TEXT_GAMMA = 2.2;
+
 // Card silhouette for the Opacity Mask (1 = inside the rounded card, 0 = outside)
 float Card_OpacityMask(float2 UV, float Aspect, float Radius)
 {
@@ -162,9 +164,36 @@ float Card_Surface(float MetalAmount, float HoloAmount, float ArtFoilAmount,
 }
 
 // Glow from the holo frame, sparkles and sheen, hidden under the overlay
-float3 Card_Emissive(float3 Holo, float HoloIntensity, float HoloAmount,
-                     float Sparkles, float3 Sheen, float OverlayAmount)
+float3 Card_Emissive(float3 Holo, float HoloIntensity, float HoloAmount, float Sparkles, float3 Sheen, float OverlayAmount)
 {
     float3 Glow = Holo * HoloIntensity * HoloAmount + Sparkles + Sheen;
     return Glow * (1.0 - OverlayAmount);
+}
+
+// Card color built bottom to top: frame, card, art window, foreground, art foil, overlay, text
+float3 Card_BaseColor(float2 Layout, float3 CardBaseColor,
+                      float3 FrameColor, float3 MetalColor, float MetalAmount,
+                      float3 Holo, float HoloAmount,
+                      float3 ArtWindow, float ArtWindowOpacity,
+                      float3 Foreground, float ForegroundMask,
+                      float ArtFoilAmount,
+                      float3 Overlay, float OverlayAmount,
+                      float4 Text)
+{
+    float Frame = Layout.x;
+    float Art = Layout.y;
+    
+    // Frame: Plain color, then metal, then holo
+    float3 FrameRGB = lerp(FrameColor, MetalColor, MetalAmount);
+    FrameRGB = lerp(FrameRGB, Holo, HoloAmount);
+    
+    float3 Color = lerp(CardBaseColor, FrameRGB, Frame);
+    Color = lerp(Color, ArtWindow, Art * ArtWindowOpacity);
+    Color = lerp(Color, Foreground, ForegroundMask);
+    Color = lerp(Color, Holo, ArtFoilAmount);
+    Color = lerp(Color, Overlay, OverlayAmount);
+    
+    // Same gamma the graph's Power node applied to the text layer
+    float3 TextColor = pow(Text.rgb, CARD_TEXT_GAMMA);
+    return lerp(Color, TextColor, Text.a);
 }
