@@ -160,3 +160,11 @@ float Card_Surface(float MetalAmount, float HoloAmount, float ArtFoilAmount,
     
     return Roughness;
 }
+
+// Glow from the holo frame, sparkles and sheen, hidden under the overlay
+float3 Card_Emissive(float3 Holo, float HoloIntensity, float HoloAmount,
+                     float Sparkles, float3 Sheen, float OverlayAmount)
+{
+    float3 Glow = Holo * HoloIntensity * HoloAmount + Sparkles + Sheen;
+    return Glow * (1.0 - OverlayAmount);
+}
