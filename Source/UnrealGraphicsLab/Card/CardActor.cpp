@@ -69,7 +69,7 @@ void ACardActor::UpdateMaterial()
 	CardMesh->SetMaterial(0, CardMaterial);
 }
 
-void ACardActor::RedrawText()
+void ACardActor::RedrawText() const
 {
 	if (!CardData || !TextWidgetClass || !TextTarget)
 	{
@@ -84,4 +84,9 @@ void ACardActor::RedrawText()
 
 	TextWidget->SetCardData(CardData);
 	UCardTextLibrary::DrawWidgetToRenderTarget(TextWidget, TextTarget, TextScale);
+	
+	if (PreviewTarget)
+	{
+		UCardTextLibrary::DrawWidgetToRenderTarget(TextWidget, PreviewTarget, TextScale);
+	}
 }

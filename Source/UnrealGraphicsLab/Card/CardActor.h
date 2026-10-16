@@ -44,9 +44,13 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Card|Text")
 	FIntPoint TextResolution = FIntPoint(1260, 1760);
 	
+	// Optional extra target, e.g. RT_CardText, so the M_Card editor preview shows this card's text
+	UPROPERTY(EditAnywhere, Category = "Card|Text")
+	TObjectPtr<UTextureRenderTarget2D> PreviewTarget;
+	
 private:
 	void UpdateMaterial();
-	void RedrawText();
+	void RedrawText() const;
 	
 	UPROPERTY(Transient)
 	TObjectPtr<UTextureRenderTarget2D> TextTarget;
