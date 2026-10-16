@@ -1,4 +1,5 @@
 #pragma once
+
 #include "/GraphicsLab/Shared/Common.ush"
 
 // Seed offsets for GL_Hash21 (arbitrary nonintegers)

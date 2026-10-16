@@ -7,6 +7,7 @@
 #include "Kismet/KismetRenderingLibrary.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Containers/Ticker.h"
+#include "Framework/Application/SlateApplication.h"
 
 ACardActor::ACardActor()
 {
@@ -71,6 +72,11 @@ void ACardActor::UpdateMaterial()
 
 void ACardActor::RedrawText() const
 {
+	if (!FSlateApplication::IsInitialized())
+	{
+		return;
+	}
+	
 	if (!CardData || !TextWidgetClass || !TextTarget)
 	{
 		return;
