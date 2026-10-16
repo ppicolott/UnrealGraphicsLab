@@ -5,6 +5,8 @@
 #include "CardTypes.h"
 #include "CardData.generated.h"
 
+class UMaterialInterface;
+
 USTRUCT(BlueprintType)
 struct FCardAttack
 {
@@ -57,4 +59,7 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Card", meta = (ClampMin = 0, ClampMax = 3))
 	int32 RetreatCost = 1;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Card|Visuals")
+	TObjectPtr<UMaterialInterface> CardMaterial;
 };

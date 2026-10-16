@@ -4,6 +4,8 @@
 #include "CardTextLibrary.h"
 #include "CardTextWidget.h"
 #include "Components/StaticMeshComponent.h"
+#include "Kismet/KismetRenderingLibrary.h"
+#include "Materials/MaterialInstanceDynamic.h"
 
 ACardActor::ACardActor()
 {
@@ -18,12 +20,48 @@ ACardActor::ACardActor()
 void ACardActor::SetCardData(UCardData* InCardData)
 {
 	CardData = InCardData;
+	RefreshCard();
+}
+
+void ACardActor::RefreshCard()
+{
+	UpdateMaterial();
 	RedrawText();
+}
+
+void ACardActor::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+	RefreshCard();
+}
+
+void ACardActor::BeginPlay()
+{
+	Super::BeginPlay();
+	RefreshCard();
+}
+
+void ACardActor::UpdateMaterial()
+{
+	if (!CardData || !CardData->CardMaterial)
+	{
+		return;
+	}
+	
+	if (!TextTarget)
+	{
+		TextTarget = UKismetRenderingLibrary::CreateRenderTarget2D(
+				this, TextResolution.X, TextResolution.Y, RTF_RGBA8_SRGB, FLinearColor::Transparent);
+	}
+	
+	CardMaterial = UMaterialInstanceDynamic::Create(CardData->CardMaterial, this);
+	CardMaterial->SetTextureParameterValue(TEXT("TextLayer"), TextTarget);
+	CardMesh->SetMaterial(0, CardMaterial);
 }
 
 void ACardActor::RedrawText()
 {
-	if (!CardData || !TextWidgetClass || !TextRenderTarget)
+	if (!CardData || !TextWidgetClass || !TextTarget)
 	{
 		return;
 	}
@@ -35,23 +73,5 @@ void ACardActor::RedrawText()
 	}
 
 	TextWidget->SetCardData(CardData);
-	UCardTextLibrary::DrawWidgetToRenderTarget(TextWidget, TextRenderTarget, TextScale);
+	UCardTextLibrary::DrawWidgetToRenderTarget(TextWidget, TextTarget, TextScale);
 }
-
-void ACardActor::BeginPlay()
-{
-	Super::BeginPlay();
-	RedrawText();
-}
-
-#if WITH_EDITOR
-void ACardActor::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-
-	if (PropertyChangedEvent.GetMemberPropertyName() == GET_MEMBER_NAME_CHECKED(ACardActor, CardData))
-	{
-		RedrawText();
-	}
-}
-#endif
