@@ -6,6 +6,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Kismet/KismetRenderingLibrary.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Containers/Ticker.h"
 
 ACardActor::ACardActor()
 {
@@ -27,6 +28,15 @@ void ACardActor::RefreshCard()
 {
 	UpdateMaterial();
 	RedrawText();
+	
+	// Textures and shaders may still be compiling when the level opens, so draw again shortly after
+	FTSTicker::GetCoreTicker().AddTicker(
+			FTickerDelegate::CreateWeakLambda(this, [this](float)
+			{
+					RedrawText();
+					return false;
+			}),
+			0.5f);
 }
 
 void ACardActor::OnConstruction(const FTransform& Transform)
