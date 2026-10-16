@@ -11,6 +11,21 @@ float GL_Hash21(float2 P)
     return frac(P.x * P.y);
 }
 
+// Smooth random field: hashes the 4 corners of the cell and blends them with a smoothstep curve
+float GL_ValueNoise(float2 P)
+{
+    float2 I = floor(P);
+    float2 F = frac(P);
+    float2 U = F * F * (3.0 - 2.0 * F);
+    
+    float A = GL_Hash21(I);
+    float B = GL_Hash21(I + float2(1.0, 0.0));
+    float C = GL_Hash21(I + float2(0.0, 1.0));
+    float D = GL_Hash21(I + float2(1.0, 1.0));
+    
+    return lerp(lerp(A, B, U.x), lerp(C, D, U.x), U.y);
+}
+
 float GL_SDRoundedBox(float2 P, float2 HalfSize, float Radius)
 {
     float2 Q = abs(P) - HalfSize + Radius;

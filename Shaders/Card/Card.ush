@@ -18,6 +18,10 @@ static const float CARD_BASE_ROUGHNESS = 0.5;
 
 static const float CARD_TEXT_GAMMA = 2.2;
 
+static const float CARD_SEED_GRAIN_X = 31.7;
+static const float CARD_SEED_GRAIN_Y = 37.1;
+static const float CARD_SEED_GRAIN_ROUGHNESS = 41.3;
+
 // Card silhouette for the Opacity Mask (1 = inside the rounded card, 0 = outside)
 float Card_OpacityMask(float2 UV, float Aspect, float Radius)
 {
@@ -180,9 +184,28 @@ float Card_FoilPattern(float2 UV, float Aspect, float Type, float Density, float
     return T < 0.5 ? Stars : T < 1.5 ? Stripes : Diamonds;
 }
 
+float2 Card_GoldGrain(float2 UV, float Aspect, float Density, float Strength, float Tolerance, out float RoughnessOffset)
+{
+    float2 Grid = UV * float2(Aspect, 1.0) * Density;
+    
+    float2 Tilt = float2(GL_ValueNoise(Grid + CARD_SEED_GRAIN_X), GL_ValueNoise(Grid + CARD_SEED_GRAIN_Y)) * 2.0 - 1.0;
+    float Rough = GL_ValueNoise(Grid + CARD_SEED_GRAIN_ROUGHNESS) * 2.0 - 1.0;
+    
+    float CellsPerPixel = length(fwidth(Grid));
+    
+    // Cells per pixel: starts fading at Tolerance, gone at twice that (higher = visible farther, may flicker)
+    float Fade = 1.0 - smoothstep(Tolerance, Tolerance * 2.0, CellsPerPixel);
+    
+    // Grain too small to see still scatters light: what fades from the normal goes into roughness
+    RoughnessOffset = Rough * 0.5 * Strength * Fade + (1.0 - Fade) * Strength * 0.25;
+    
+    return Tilt * Strength * Fade;
+}
+
 // Surface response of the frame and art foil (returns Roughness)
 float Card_Surface(float MetalAmount, float HoloAmount, float ArtFoilAmount, float GoldAmount,
                    float MetalRoughness, float HoloRoughness, float3 MetalNormal, float MetalNormalStrength,
+                   float2 UV, float Aspect, float GrainDensity, float GrainStrength, float GrainTolerance,
                    out float Metallic, out float3 Normal)
 {
     float Roughness = lerp(CARD_BASE_ROUGHNESS, MetalRoughness, MetalAmount);
@@ -192,6 +215,13 @@ float Card_Surface(float MetalAmount, float HoloAmount, float ArtFoilAmount, flo
     Metallic = max(max(max(HoloAmount, MetalAmount), ArtFoilAmount), GoldAmount);
     
     Normal = lerp(float3(0.0, 0.0, 1.0), MetalNormal, MetalAmount * MetalNormalStrength);
+    
+    // Metallic grain on the foil and the gold art
+    float GrainRoughness;
+    float2 GrainTilt = Card_GoldGrain(UV, Aspect, GrainDensity, GrainStrength, GrainTolerance, GrainRoughness);
+    float GrainMask = max(HoloAmount, GoldAmount);
+    Roughness = saturate(Roughness + GrainRoughness * GrainMask);
+    Normal = normalize(Normal + float3(GrainTilt * GrainMask, 0.0));
     
     return Roughness;
 }
