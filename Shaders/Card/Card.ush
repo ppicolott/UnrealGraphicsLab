@@ -30,6 +30,7 @@ float Card_OpacityMask(float2 UV, float Aspect, float Radius)
 float2 Card_Layout(float2 UV, float Aspect, float Radius, float Border, float FullArt, float Overflow,
                    float ForegroundAspect, float BackgroundAspect, float BackgroundZoom, float2 BackgroundOffset,
                    float3 ViewTS, float ForegroundDepth, float BackgroundDepth,
+                   float ForegroundZoom, float2 ForegroundOffset, float UseCropForeground,
                    out float2 ArtUV, out float ArtBounds, out float2 BackgroundUV, out float2 CardUV)
 {
     float2 P = UV - 0.5;
@@ -57,12 +58,20 @@ float2 Card_Layout(float2 UV, float Aspect, float Radius, float Border, float Fu
     float2 ArtBoxHalf = WindowHalf + Overflow;
     
     ArtUV = (PF - ArtBoxCenter) / (2.0 * ArtBoxHalf) + 0.5;
+    
     float FitRatio = ForegroundAspect / (ArtBoxHalf.x / ArtBoxHalf.y);
     float2 FitScale = FitRatio > 1.0 ? float2(1.0, FitRatio) : float2(1.0 / FitRatio, 1.0);
+    
+    // Foreground zoom (1 = fit) and offset (fraction of the art box)
+    ArtUV = (ArtUV - 0.5) / max(ForegroundZoom, 0.01) + 0.5 - ForegroundOffset;
+    
     ArtUV = (ArtUV - 0.5) * FitScale + 0.5;
     
     ArtBounds = GL_Fill(GL_SDRoundedBox(PF - ArtBoxCenter, ArtBoxHalf, 0.0));
     ArtBounds *= all(ArtUV == saturate(ArtUV)) ? 1.0 : 0.0;
+    
+    // Optionally clip the foreground to the art window (or the inner frame on full art)
+    ArtBounds *= lerp(1.0, Art, UseCropForeground);
     
     BackgroundUV = (PB - ArtBoxCenter) / (2.0 * WindowHalf) + 0.5;
     float CoverRatio = BackgroundAspect / (WindowHalf.x / WindowHalf.y);
