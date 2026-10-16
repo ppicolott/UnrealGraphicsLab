@@ -7,6 +7,7 @@
 class UCardData;
 class UCardTextWidget;
 class UTextureRenderTarget2D;
+class UStaticMeshComponent;
 
 UCLASS(Abstract)
 class UNREALGRAPHICSLAB_API ACardActor : public AActor
@@ -28,6 +29,9 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Card")
+	TObjectPtr<UStaticMeshComponent> CardMesh;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Card")
 	TObjectPtr<UCardData> CardData;

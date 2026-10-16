@@ -3,11 +3,16 @@
 #include "CardData.h"
 #include "CardTextLibrary.h"
 #include "CardTextWidget.h"
+#include "Components/StaticMeshComponent.h"
 
 ACardActor::ACardActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
+	
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
+	
+	CardMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("CardMesh"));
+	CardMesh->SetupAttachment(RootComponent);
 }
 
 void ACardActor::SetCardData(UCardData* InCardData)
