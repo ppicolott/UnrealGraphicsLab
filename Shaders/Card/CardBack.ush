@@ -1,0 +1,34 @@
+#pragma once
+
+#include "Card.ush"
+
+// Square plane UV -> card UV (0..1 across the 63x88 card). Zoom > 1 crops slightly into the art
+float2 CardBack_UV(float2 UV, float Aspect, float Zoom)
+{
+	float2 P = UV - 0.5;
+	P.x /= Aspect; // the card is narrower than the plane
+	return P / max(Zoom, 0.01) + 0.5;
+}
+
+// Gold elements turn into metal with the same grain as the front (returns Roughness)
+float CardBack_Surface(float2 CardUV, float Aspect, float GoldMask, float GoldRoughness,
+					   float GrainDensity, float GrainStrength, float GrainTolerance,
+					   out float Metallic, out float3 Normal)
+{
+	float GrainRoughness;
+	float2 GrainTilt = Card_GoldGrain(CardUV, Aspect, GrainDensity, GrainStrength, GrainTolerance, GrainRoughness);
+	
+	Metallic = GoldMask;
+	Normal = normalize(float3(GrainTilt * GoldMask, 1.0));
+	
+	float Roughness = lerp(CARD_BASE_ROUGHNESS, GoldRoughness, GoldMask);
+	return saturate(Roughness + GrainRoughness * GoldMask);
+}
+
+// "Makeup duochrome" on the swirls: the art's hue slides with the view angle
+float3 CardBack_BaseColor(float3 Art, float SwirlMask, float2 CardUV, float3 ViewTS, float Shift, float Spread)
+{
+	float Turns = (ViewTS.x + ViewTS.y) * Shift // tilting the card slides the hue
+				+ (CardUV.x + CardUV.y) * Spread; // soft diagonal gradient across the card
+	return lerp(Art, GL_HueShift(Art, Turns), SwirlMask);
+}

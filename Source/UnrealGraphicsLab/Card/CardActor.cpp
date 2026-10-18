@@ -17,6 +17,12 @@ ACardActor::ACardActor()
 	
 	CardMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("CardMesh"));
 	CardMesh->SetupAttachment(RootComponent);
+	CardMesh->bAffectDynamicIndirectLighting = false;
+	
+	BackMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BackMesh"));
+	BackMesh->SetupAttachment(CardMesh);
+	BackMesh->SetRelativeRotation(FRotator(180.0f, 0.0f, 0.0f));
+	BackMesh->bAffectDynamicIndirectLighting = false;
 }
 
 void ACardActor::SetCardData(UCardData* InCardData)
@@ -34,8 +40,8 @@ void ACardActor::RefreshCard()
 	FTSTicker::GetCoreTicker().AddTicker(
 			FTickerDelegate::CreateWeakLambda(this, [this](float)
 			{
-					RedrawText();
-					return false;
+				RedrawText();
+				return false;
 			}),
 			0.5f);
 }
@@ -54,6 +60,12 @@ void ACardActor::BeginPlay()
 
 void ACardActor::UpdateMaterial()
 {
+	BackMesh->SetStaticMesh(CardMesh->GetStaticMesh());
+	if (BackMaterial)
+	{
+		BackMesh->SetMaterial(0, BackMaterial);
+	}
+	
 	if (!CardData || !CardData->CardMaterial)
 	{
 		return;

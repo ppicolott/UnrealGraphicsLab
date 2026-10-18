@@ -9,6 +9,7 @@ class UCardTextWidget;
 class UTextureRenderTarget2D;
 class UStaticMeshComponent;
 class UMaterialInstanceDynamic;
+class UMaterialInterface;
 
 UCLASS(Abstract)
 class UNREALGRAPHICSLAB_API ACardActor : public AActor
@@ -31,6 +32,12 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Card")
 	TObjectPtr<UStaticMeshComponent> CardMesh;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Card")
+	TObjectPtr<UStaticMeshComponent> BackMesh;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Card")
+	TObjectPtr<UMaterialInterface> BackMaterial;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Card")
 	TObjectPtr<UCardData> CardData;

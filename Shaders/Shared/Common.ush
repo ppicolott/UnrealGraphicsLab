@@ -63,3 +63,12 @@ float GL_SDStar5(float2 P, float R, float InnerRatio)
     float H = clamp(dot(P, BA) / dot(BA, BA), 0.0, R);
     return length(P - BA * H) * sign(P.y * BA.x - P.x * BA.y);
 }
+
+// Rodrigues' Rotation - Rotates the hue around the gray axis, keeping brightness (Turns = 1 is a full circle)
+float3 GL_HueShift(float3 Color, float Turns)
+{
+    float Angle = Turns * 2.0 * PI;
+    float3 Axis = float3(0.57735, 0.57735, 0.57735); // normalized (1, 1, 1): the gray axis
+    float C = cos(Angle);
+    return Color * C + cross(Axis, Color) * sin(Angle) + Axis * dot(Axis, Color) * (1.0 - C);
+}
