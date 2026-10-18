@@ -112,6 +112,20 @@ float Card_Sparkle(float2 UV, float3 ViewTS, float Density, float Sharpness, flo
     return Dot * pow(Align, Sharpness);
 }
 
+// Dense micro glints on the gold art: gold when faint, white at the peak, faded like the grain
+float3 Card_GoldSparkles(float2 UV, float Aspect, float3 ViewTS, float Density, float Sharpness,
+                         float Intensity, float Tolerance, float3 Tint, float GoldMask)
+{
+    float2 SparkleUV = UV * float2(Aspect, 1.0);
+    float Glint = Card_Sparkle(SparkleUV, ViewTS, Density, Sharpness, 0.0);
+    
+    float CellsPerPixel = length(fwidth(SparkleUV * Density));
+    float Fade = 1.0 - smoothstep(Tolerance, Tolerance * 2.0, CellsPerPixel);
+    
+    float3 Color = lerp(Tint, 1.0, Glint);
+    return Color * Glint * Intensity * Fade * GoldMask;
+}
+
 float3 Card_Sheen(float2 UV, float3 ViewTS, float Frequency, float Width, float ViewInfluence, float Whiteness)
 {
     float Phase = (UV.x + UV.y) * Frequency // diagonal stripes
@@ -227,9 +241,9 @@ float Card_Surface(float MetalAmount, float HoloAmount, float ArtFoilAmount, flo
 }
 
 // Glow from the holo frame, sparkles and sheen, hidden under the text
-float3 Card_Emissive(float3 Holo, float HoloIntensity, float HoloAmount, float Sparkles, float3 Sheen, float TextAmount)
+float3 Card_Emissive(float3 Holo, float HoloIntensity, float HoloAmount, float Sparkles, float3 Sheen, float3 GoldSparkles, float TextAmount)
 {
-    float3 Glow = Holo * HoloIntensity * HoloAmount + Sparkles + Sheen;
+    float3 Glow = Holo * HoloIntensity * HoloAmount + Sparkles + Sheen + GoldSparkles;
     return Glow * (1.0 - TextAmount);
 }
 
