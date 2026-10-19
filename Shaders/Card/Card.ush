@@ -32,7 +32,7 @@ float Card_OpacityMask(float2 UV, float Aspect, float Radius)
 }
 
 // Card layout masks (R = frame, G = art)
-float2 Card_Layout(float2 UV, float Aspect, float Radius, float Border, float FullArt, float Overflow,
+float2 Card_Layout(float2 UV, float Aspect, float Radius, float Border, float Feather, float FullArt, float Overflow,
                    float ForegroundAspect, float BackgroundAspect, float BackgroundZoom, float2 BackgroundOffset,
                    float3 ViewTS, float ForegroundDepth, float BackgroundDepth,
                    float ForegroundZoom, float2 ForegroundOffset, float UseCropForeground,
@@ -50,7 +50,12 @@ float2 Card_Layout(float2 UV, float Aspect, float Radius, float Border, float Fu
     CardUV = P / (2.0 * CardHalf) + 0.5;
     
     float Card = GL_Fill(GL_SDRoundedBox(P, CardHalf, Radius));
-    float Inner = GL_Fill(GL_SDRoundedBox(P, CardHalf - Border, max(Radius - Border, 0.0)));
+    
+    // Feather > 0 fades the frame into the art across the seam instead of a hard cut
+    float InnerDistance = GL_SDRoundedBox(P, CardHalf - Border, max(Radius - Border, 0.0));
+    float Inner = Feather > 0.0 ? 1.0 - smoothstep(-0.5 * Feather, 0.5 * Feather, InnerDistance)
+                                : GL_Fill(InnerDistance);
+    
     float Frame = Card - Inner;
     
     // V grows downwards, so negative y = top
@@ -140,7 +145,7 @@ float3 Card_Sheen(float2 UV, float3 ViewTS, float Frequency, float Width, float 
 // Foil color: tinted metal facing the camera, rainbow towards grazing angles
 // FacetShift breaks the bands into prism crystals (0 = smooth bands)
 float3 Card_HoloFoil(float2 UV, float3 ViewTS, float Frequency, float ViewInfluence,
-                     float3 Tint, float Rainbow, float FacetDensity, float FacetShift)
+                     float3 Tint, float Rainbow, float FacetDensity, float FacetShift, float Pastel)
 {
     float Edge;
     float Facet = GL_Voronoi(UV * FacetDensity, Edge);
@@ -150,6 +155,7 @@ float3 Card_HoloFoil(float2 UV, float3 ViewTS, float Frequency, float ViewInflue
                 + Facet * FacetShift; // each crystal offset by its own random amount
     
     float3 Spectrum = GL_Spectrum(Phase);
+    Spectrum = lerp(Spectrum, 1.0, Pastel); // 0 = vivid rainbow, 1 = white
     
     // Tinted foil keeps the bands as brightness only
     float3 Tinted = Tint * lerp(0.6, 1.0, 0.5 + 0.5 * cos(Phase * 2.0 * PI));
