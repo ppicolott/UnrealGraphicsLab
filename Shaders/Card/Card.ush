@@ -278,6 +278,14 @@ float3 Card_BackdropReflection(float3 ReflectionWS, float3 MetalColor, float Met
     return Backdrop * MetalColor * MetalAmount * Amount;
 }
 
+// Soft light that follows the mouse over the card
+float3 Card_Glare(float2 UV, float2 Position, float Radius, float Intensity, float3 Tint, float Amount)
+{
+    float2 Delta = UV - Position; // the card mesh is a square plane, so raw UV is already round
+    float Falloff = 1.0 - smoothstep(0.0, Radius, length(Delta));
+    return Tint * Falloff * Falloff * Intensity * Amount;
+}
+
 // Surface response of the frame and art foil (returns Roughness)
 float Card_Surface(float MetalAmount, float HoloAmount, float ArtFoilAmount, float GoldAmount,
                    float MetalRoughness, float HoloRoughness, float3 MetalNormal, float MetalNormalStrength,
@@ -306,12 +314,12 @@ float Card_Surface(float MetalAmount, float HoloAmount, float ArtFoilAmount, flo
     return Roughness;
 }
 
-// Glow from the holo frame, sparkles and sheen, hidden under the text
-float3 Card_Emissive(float3 Holo, float HoloIntensity, float HoloAmount, float Sparkles, 
-                     float3 Sheen, float3 GoldSparkles, float TextAmount, float3 Reflection)
+// Glow from the holo frame, sparkles and sheen, hidden under the text; the glare lights everything
+float3 Card_Emissive(float3 Holo, float HoloIntensity, float HoloAmount, float Sparkles,
+                     float3 Sheen, float3 GoldSparkles, float TextAmount, float3 Reflection, float3 Glare)
 {
     float3 Glow = Holo * HoloIntensity * HoloAmount + Sparkles + Sheen + GoldSparkles + Reflection;
-    return Glow * (1.0 - TextAmount);
+    return Glow * (1.0 - TextAmount) + Glare;
 }
 
 // Card color built bottom to top: frame, card, art window, foreground, art foil, overlay, text

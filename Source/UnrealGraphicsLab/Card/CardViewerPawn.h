@@ -75,4 +75,6 @@ private:
 	
 	bool bDragging = false;
 	FVector2D LastMousePosition = FVector2D::ZeroVector;
+	
+	void HandleGlare(APlayerController& PlayerController);
 };

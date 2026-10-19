@@ -34,6 +34,9 @@ public:
 	void ResetUserRotation();
 	
 	void PlaceFacing(const FVector& Center, const FVector& ToViewer);
+	
+	bool TraceCardUV(const FVector& RayOrigin, const FVector& RayDirection, FVector2D& OutUV) const;
+	void SetGlare(FVector2D InUV, bool bInHovering);
 
 protected:
 	virtual void OnConstruction(const FTransform& Transform) override;
@@ -82,6 +85,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Card|Text")
 	TObjectPtr<UTextureRenderTarget2D> PreviewTarget;
 	
+	UPROPERTY(EditAnywhere, Category = "Card|Glare", meta = (ClampMin = 0))
+	float GlareFadeSpeed = 6.0f;
+	
 private:
 	void UpdateMaterial();
 	void RedrawText() const;
@@ -96,4 +102,8 @@ private:
 	
 	float UserYaw = 0.0f;
 	float UserPitch = 0.0f;
+	
+	FVector2D GlareUV = FVector2D(0.5, 0.5);
+	bool bGlareHovering = false;
+	float GlareAmount = 0.0f;
 };

@@ -8,6 +8,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Containers/Ticker.h"
 #include "Framework/Application/SlateApplication.h"
+#include "Engine/StaticMesh.h"
 
 ACardActor::ACardActor()
 {
@@ -44,6 +45,38 @@ void ACardActor::RefreshCard()
 				return false;
 			}),
 			0.5f);
+}
+
+bool ACardActor::TraceCardUV(const FVector& RayOrigin, const FVector& RayDirection, FVector2D& OutUV) const
+{
+	const FTransform& MeshTransform = CardMesh->GetComponentTransform();
+	const FVector Normal = MeshTransform.GetUnitAxis(EAxis::Z);
+	
+	const double Facing = FVector::DotProduct(RayDirection, Normal);
+	if (FMath::IsNearlyZero(Facing))
+	{
+		return false; // ray parallel to the card
+	}
+	
+	const double Distance = FVector::DotProduct(MeshTransform.GetLocation() - RayOrigin, Normal) / Facing;
+	if (Distance < 0.0)
+	{
+		return false; // card behind the camera
+	}
+	
+	const FVector Local = MeshTransform.InverseTransformPosition(RayOrigin + RayDirection * Distance);
+	const FBox Bounds = CardMesh->GetStaticMesh()->GetBoundingBox();
+	OutUV = (FVector2D(Local) - FVector2D(Bounds.Min)) / FVector2D(Bounds.GetSize());
+	return OutUV.X >= 0.0 && OutUV.X <= 1.0 && OutUV.Y >= 0.0 && OutUV.Y <= 1.0;
+}
+
+void ACardActor::SetGlare(FVector2D InUV, bool bInHovering)
+{
+	bGlareHovering = bInHovering;
+	if (bInHovering)
+	{
+		GlareUV = InUV; // keep the last spot while it fades out
+	}
 }
 
 void ACardActor::OnConstruction(const FTransform& Transform)
@@ -134,6 +167,13 @@ void ACardActor::Tick(float DeltaSeconds)
 	
 	const FQuat Current = CardMesh->GetRelativeRotation().Quaternion();
 	CardMesh->SetRelativeRotation(FMath::QInterpTo(Current, Target, DeltaSeconds, Speed));
+	
+	GlareAmount = FMath::FInterpTo(GlareAmount, bGlareHovering ? 1.0f : 0.0f, DeltaSeconds, GlareFadeSpeed);
+	if (CardMaterial)
+	{
+		CardMaterial->SetScalarParameterValue(TEXT("GlareAmount"), GlareAmount);
+		CardMaterial->SetVectorParameterValue(TEXT("GlarePosition"), FLinearColor(GlareUV.X, GlareUV.Y, 0.0f));
+	}
 }
 
 void ACardActor::AddUserRotation(float DeltaYaw, float DeltaPitch)

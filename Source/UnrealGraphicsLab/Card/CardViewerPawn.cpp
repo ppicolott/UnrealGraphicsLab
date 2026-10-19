@@ -39,6 +39,7 @@ void ACardViewerPawn::Tick(float DeltaSeconds)
 	{
 		HandleKeys(*PlayerController);
 		HandleDrag(*PlayerController);
+		HandleGlare(*PlayerController);
 	}
 	
 	UpdateSlide(DeltaSeconds);
@@ -194,6 +195,7 @@ void ACardViewerPawn::HandleDrag(APlayerController& PlayerController)
 {
 	float MouseX, MouseY;
 	const bool bHasMouse = PlayerController.GetMousePosition(MouseX, MouseY);
+	
 	const FVector2D MousePosition(MouseX, MouseY);
 	
 	if (!bHasMouse || SlideAlpha < 1.0f || !PlayerController.IsInputKeyDown(EKeys::LeftMouseButton))
@@ -211,4 +213,20 @@ void ACardViewerPawn::HandleDrag(APlayerController& PlayerController)
 	
 	bDragging = true;
 	LastMousePosition = MousePosition;
+}
+
+void ACardViewerPawn::HandleGlare(APlayerController& PlayerController)
+{
+	FVector RayOrigin, RayDirection;
+	const bool bHasRay = SlideAlpha >= 1.0f && PlayerController.DeprojectMousePositionToWorld(RayOrigin, RayDirection);
+	
+	for (int32 Index = 0; Index < Cards.Num(); ++Index)
+	{
+		if (ACardActor* Card = GetCard(Index))
+		{
+			FVector2D UV = FVector2D::ZeroVector;
+			const bool bHovering = bHasRay && Index == CurrentIndex && Card->TraceCardUV(RayOrigin, RayDirection, UV);
+			Card->SetGlare(UV, bHovering);
+		}
+	}
 }
