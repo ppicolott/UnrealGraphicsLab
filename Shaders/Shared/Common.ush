@@ -11,6 +11,14 @@ float GL_Hash21(float2 P)
     return frac(P.x * P.y);
 }
 
+// Hash for integer lattice points, where GL_Hash21 repeats in regular steps ("Hash without Sine", Dave Hoskins)
+float GL_HashLattice(float2 P)
+{
+    float3 P3 = frac(P.xyx * 0.1031);
+    P3 += dot(P3, P3.yzx + 33.33);
+    return frac((P3.x + P3.y) * P3.z);
+}
+
 // Smooth random field: hashes the 4 corners of the cell and blends them with a smoothstep curve
 float GL_ValueNoise(float2 P)
 {
@@ -24,6 +32,28 @@ float GL_ValueNoise(float2 P)
     float D = GL_Hash21(I + float2(1.0, 1.0));
     
     return lerp(lerp(A, B, U.x), lerp(C, D, U.x), U.y);
+}
+
+// Random unit direction for a cell
+float2 GL_RandomGradient(float2 Cell)
+{
+    float Angle = GL_HashLattice(Cell) * 6.2832;
+    return float2(cos(Angle), sin(Angle));
+}
+
+// Smooth organic noise: each corner has a random direction instead of a random value (0..1)
+float GL_GradientNoise(float2 P)
+{
+    float2 I = floor(P);
+    float2 F = frac(P);
+    float2 U = F * F * F * (F * (F * 6.0 - 15.0) + 10.0);
+    
+    float A = dot(GL_RandomGradient(I), F);
+    float B = dot(GL_RandomGradient(I + float2(1.0, 0.0)), F - float2(1.0, 0.0));
+    float C = dot(GL_RandomGradient(I + float2(0.0, 1.0)), F - float2(0.0, 1.0));
+    float D = dot(GL_RandomGradient(I + float2(1.0, 1.0)), F - float2(1.0, 1.0));
+    
+    return lerp(lerp(A, B, U.x), lerp(C, D, U.x), U.y) * 0.7071 + 0.5;
 }
 
 float GL_SDRoundedBox(float2 P, float2 HalfSize, float Radius)
