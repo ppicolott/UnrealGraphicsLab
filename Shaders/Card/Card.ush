@@ -282,7 +282,8 @@ float3 Card_BackdropReflection(float3 ReflectionWS, float3 MetalColor, float Met
 float3 Card_Glare(float2 UV, float2 Position, float Radius, float Intensity, float3 Tint, float Amount)
 {
     float2 Delta = UV - Position; // the card mesh is a square plane, so raw UV is already round
-    float Falloff = 1.0 - smoothstep(0.0, Radius, length(Delta));
+    // float Falloff = 1.0 - smoothstep(0.0, Radius, length(Delta));
+    float Falloff = exp(-4.0 * dot(Delta, Delta) / (Radius * Radius)); // gaussian: no edge, just fades
     return Tint * Falloff * Falloff * Intensity * Amount;
 }
 
