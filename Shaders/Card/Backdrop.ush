@@ -8,12 +8,19 @@ static const float BACKDROP_SEED_OFFSET_X = 59.3;
 static const float BACKDROP_SEED_OFFSET_Y = 61.7;
 static const float BACKDROP_SEED_SIZE = 67.9;
 static const float BACKDROP_SEED_PHASE = 71.3;
+
 static const float BACKDROP_FOG_OCTAVE_SHIFT = 17.0;
-// Rotates each fBm layer (about 37°) so the layers' grids don't line up
-static const float2x2 BACKDROP_FOG_ROTATION = float2x2(0.8, -0.6, 0.6, 0.8);
+static const float2x2 BACKDROP_FOG_ROTATION = float2x2(0.8, -0.6, 0.6, 0.8); // Rotates each fBm layer (about 37°) so the layers' grids don't line up
 static const float2 BACKDROP_FOG_WARP_OFFSET = float2(5.2, 1.3);
 static const int BACKDROP_FOG_OCTAVES = 4;
 static const float BACKDROP_FOG_WARP_STRENGTH = 0.4;
+
+static const float BACKDROP_SEED_STREAK_PHASE = 79.1;
+static const float BACKDROP_SEED_STREAK_ACTIVE = 83.7;
+static const float BACKDROP_SEED_STREAK_COLOR = 89.3;
+static const float BACKDROP_STREAK_TRAVEL = 1.5;
+static const float BACKDROP_STREAK_HALO = 4.0;
+static const float BACKDROP_STREAK_HALO_STRENGTH = 0.25;
 
 // UV.y grows downwards, so 0 is the top
 float3 Backdrop_Gradient(float2 UV, float3 TopColor, float3 BottomColor)
@@ -94,7 +101,44 @@ float3 Backdrop_Fog(float2 UV, float Aspect, float Scale, float Height, float Ri
 	return FogColor * Wisps * Vertical * Horizontal * Intensity;
 }
 
-// Final backdrop color: gradient, glow and extra layers (stars, fog), darkened at the screen corners
+// Rare light streaks crossing the backdrop diagonally; each lane rolls per cycle whether it fires and its color
+float3 Backdrop_ShootingStars(float2 UV, float Aspect, float AngleDegrees, float Lanes, float Coverage,
+		float Length, float Width, float Speed, float Time, float3 ColorA, float3 ColorB, float Intensity)
+{
+	float2 P = (UV - 0.5) * float2(Aspect, 1.0);
+	float Angle = radians(AngleDegrees);
+	float2 Dir = float2(cos(Angle), sin(Angle));
+	float2 Side = float2(-Dir.y, Dir.x);
+	
+	float Along = dot(P, Dir);
+	float Across = dot(P, Side) * Lanes;
+	float Lane = floor(Across);
+	float LaneLocal = frac(Across) - 0.5;
+	
+	float T = Time * Speed + GL_HashLattice(float2(Lane, BACKDROP_SEED_STREAK_PHASE));
+	float Cycle = floor(T);
+	float Active = GL_HashLattice(float2(Lane, Cycle + BACKDROP_SEED_STREAK_ACTIVE)) < Coverage ? 1.0 : 0.0;
+	
+	float Head = lerp(-BACKDROP_STREAK_TRAVEL, BACKDROP_STREAK_TRAVEL, frac(T));
+	float TailEnd = Head - Length;
+	
+	// Distance to the segment between the tail end and the head (a capsule: rounded at the head)
+	float AlongDistance = Along - clamp(Along, TailEnd, Head);
+	float AcrossDistance = LaneLocal / Lanes;
+	float D = length(float2(AlongDistance, AcrossDistance));
+	
+	// Brightest at the head, fading towards the tail end
+	float Tail = saturate((Along - TailEnd) / max(Length, 0.001));
+	
+	float Core = exp(-D * D / max(Width * Width, 0.000001));
+	float HaloWidth = Width * BACKDROP_STREAK_HALO;
+	float Halo = exp(-D * D / max(HaloWidth * HaloWidth, 0.000001)) * BACKDROP_STREAK_HALO_STRENGTH;
+	
+	float3 Color = lerp(ColorA, ColorB, GL_HashLattice(float2(Lane, Cycle + BACKDROP_SEED_STREAK_COLOR)));
+	return Color * Tail * Tail * (Core + Halo) * Active * Intensity;
+}
+
+// Final backdrop color: gradient, glow and extra layers (stars, fog, shooting stars), darkened at the screen corners
 float3 Backdrop_Color(float2 UV, float3 TopColor, float3 BottomColor,
 		float3 GlowColor, float GlowIntensity, float GlowHeight, float GlowThickness, float GlowSpread,
 		float2 ScreenUV, float VignetteStrength, float VignetteRadius, float VignetteSoftness, float3 Layers)
