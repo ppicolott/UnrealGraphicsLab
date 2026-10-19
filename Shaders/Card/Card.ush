@@ -230,6 +230,35 @@ float2 Card_Rings(float2 ArtUV, float2 Center, float Frequency, float Strength, 
     return Radial * sin(Phase * 2.0 * PI) * Strength * Fade;
 }
 
+// Artist signature stamped anywhere on the card, merged over the text layer so it behaves as matte ink.
+float4 Card_Signature(Texture2D Signature, SamplerState SignatureSampler, float2 CardUV, float Aspect,
+                      float2 Center, float Height, float RotationDegrees, float3 Tint, float Opacity,
+                      float3 Text, float TextAmount)
+{
+    float TextureWidth, TextureHeight;
+    Signature.GetDimensions(TextureWidth, TextureHeight);
+    float SignatureAspect = TextureWidth / max(TextureHeight, 1.0);
+    
+    // Card UV -> signature UV, measured in card heights so the signature keeps its own proportions
+    float2 P = (CardUV - Center) * float2(Aspect, 1.0);
+    float Angle = radians(RotationDegrees);
+    float S = sin(Angle);
+    float C = cos(Angle);
+    P = float2(C * P.x + S * P.y, -S * P.x + C * P.y);
+    float2 Local = P / (max(Height, 0.001) * float2(SignatureAspect, 1.0)) + 0.5;
+    float Inside = all(Local == saturate(Local)) ? 1.0 : 0.0;
+    
+    // SampleGrad for the ray tracing hit shaders, like CardBack_SymbolAt
+    float4 Ink = Signature.SampleGrad(SignatureSampler, Local, ddx(Local), ddy(Local));
+    float InkAmount = Ink.a * Inside * Opacity;
+    float3 InkColor = pow(Ink.rgb * Tint, 1.0 / CARD_TEXT_GAMMA);
+    
+    // "Over" blend: the ink on top of whatever text is already there
+    float Amount = InkAmount + TextAmount * (1.0 - InkAmount);
+    float3 Color = (InkColor * InkAmount + Text * TextAmount * (1.0 - InkAmount)) / max(Amount, 0.0001);
+    return float4(Color, Amount);
+}
+
 // Surface response of the frame and art foil (returns Roughness)
 float Card_Surface(float MetalAmount, float HoloAmount, float ArtFoilAmount, float GoldAmount,
                    float MetalRoughness, float HoloRoughness, float3 MetalNormal, float MetalNormalStrength,
