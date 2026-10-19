@@ -145,7 +145,8 @@ float3 Card_Sheen(float2 UV, float3 ViewTS, float Frequency, float Width, float 
 // Foil color: tinted metal facing the camera, rainbow towards grazing angles
 // FacetShift breaks the bands into prism crystals (0 = smooth bands)
 float3 Card_HoloFoil(float2 UV, float3 ViewTS, float Frequency, float ViewInfluence,
-                     float3 Tint, float Rainbow, float FacetDensity, float FacetShift, float Pastel)
+                     float3 Tint, float Rainbow, float FacetDensity, float FacetShift,
+                     float Pastel, float EdgeWidth, float EdgeStrength)
 {
     float Edge;
     float Facet = GL_Voronoi(UV * FacetDensity, Edge);
@@ -164,7 +165,13 @@ float3 Card_HoloFoil(float2 UV, float3 ViewTS, float Frequency, float ViewInflue
     float Grazing = 1.0 - saturate(normalize(ViewTS).z);
     float RainbowMix = saturate(Rainbow * (1.0 + Grazing));
     
-    return lerp(Tinted, Spectrum, RainbowMix);
+    float3 Color = lerp(Tinted, Spectrum, RainbowMix);
+
+    // Cracked ice: thin bright lines on the facet borders, each one catching the light at its own angle
+    float Line = 1.0 - smoothstep(0.0, EdgeWidth, Edge);
+    float Glint = 0.5 + 0.5 * cos((ViewTS.x + ViewTS.y) * ViewInfluence * 2.0 * PI + Facet * 2.0 * PI);
+    
+    return lerp(Color, 1.0, Line * Glint * EdgeStrength);
 }
 
 // Gradient map from the art's brightness to gold: dark shadows, Tint midtones, pale highlights
