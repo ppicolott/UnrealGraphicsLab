@@ -46,6 +46,7 @@
 # Precompiled Assets
 SourceArt/**/*.png
 SourceArt/**/*.tga
+SourceArt/**/*.hdr
 
 # Source images belong in SourceArt/, never in Content/
 Content/**/*.png
