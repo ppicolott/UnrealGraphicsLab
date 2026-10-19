@@ -1,5 +1,14 @@
 #pragma once
 
+#include "/GraphicsLab/Shared/Common.ush"
+
+// Seed offsets for GL_Hash21 (arbitrary nonintegers)
+static const float BACKDROP_SEED_STAR = 53.1;
+static const float BACKDROP_SEED_OFFSET_X = 59.3;
+static const float BACKDROP_SEED_OFFSET_Y = 61.7;
+static const float BACKDROP_SEED_SIZE = 67.9;
+static const float BACKDROP_SEED_PHASE = 71.3;
+
 // UV.y grows downwards, so 0 is the top
 float3 Backdrop_Gradient(float2 UV, float3 TopColor, float3 BottomColor)
 {
@@ -25,12 +34,31 @@ float Backdrop_Vignette(float2 ScreenUV, float Strength, float Radius, float Sof
 	return 1.0 - Strength * smoothstep(Radius, Radius + Softness, D);
 }
 
-// Final backdrop color: gradient plus the glow, darkened at the screen corners
+// Sparse round stars that twinkle slowly; Aspect keeps them round on a non-square plane
+float3 Backdrop_Stars(float2 UV, float Aspect, float Density, float Coverage, float Size,
+		float3 StarColor, float Intensity, float Time, float TwinkleSpeed)
+{
+	float2 P = UV * float2(Aspect, 1.0) * Density;
+	float2 Cell = floor(P);
+	float2 Local = frac(P) - 0.5;
+	
+	float Present = GL_Hash21(Cell + BACKDROP_SEED_STAR) < Coverage ? 1.0 : 0.0;
+	float2 Offset = (float2(GL_Hash21(Cell + BACKDROP_SEED_OFFSET_X), GL_Hash21(Cell + BACKDROP_SEED_OFFSET_Y)) - 0.5) * 0.6;
+	float Radius = Size * lerp(0.3, 1.0, GL_Hash21(Cell + BACKDROP_SEED_SIZE));
+	float Core = 1.0 - smoothstep(0.0, Radius, length(Local - Offset));
+	
+	float Phase = GL_Hash21(Cell + BACKDROP_SEED_PHASE) * 6.2832;
+	float Twinkle = 0.6 + 0.4 * sin(Time * TwinkleSpeed + Phase);
+	
+	return StarColor * Present * Core * Core * Twinkle * Intensity;
+}
+
+// Final backdrop color: gradient, glow and extra layers (stars, fog), darkened at the screen corners
 float3 Backdrop_Color(float2 UV, float3 TopColor, float3 BottomColor,
 		float3 GlowColor, float GlowIntensity, float GlowHeight, float GlowThickness, float GlowSpread,
-		float2 ScreenUV, float VignetteStrength, float VignetteRadius, float VignetteSoftness)
+		float2 ScreenUV, float VignetteStrength, float VignetteRadius, float VignetteSoftness, float3 Layers)
 {
 	float Glow = Backdrop_Glow(UV, GlowHeight, GlowThickness, GlowSpread);
-	float3 Color = Backdrop_Gradient(UV, TopColor, BottomColor) + GlowColor * Glow * GlowIntensity;
+	float3 Color = Backdrop_Gradient(UV, TopColor, BottomColor) + GlowColor * Glow * GlowIntensity + Layers;
 	return Color * Backdrop_Vignette(ScreenUV, VignetteStrength, VignetteRadius, VignetteSoftness);
 }
