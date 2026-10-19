@@ -9,6 +9,9 @@ class UCardData;
 class UCardEnergyIconWidget;
 class UTextBlock;
 class UWidget;
+class UBorder;
+class UImage;
+class UMaterialInterface;
 
 UCLASS(Abstract)
 class UNREALGRAPHICSLAB_API UCardTextWidget : public UUserWidget
@@ -45,6 +48,9 @@ protected:
 	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UCardEnergyIconWidget> WBP_EnergyIcon_Card;
+	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UBorder> StageBadge;
 	
 	// Attack 1
 	UPROPERTY(meta = (BindWidget))
@@ -112,6 +118,21 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UCardEnergyIconWidget> WBP_EnergyIcon_Retreat_3;
 	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> WeaknessBar;
+	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> ResistanceBar;
+	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> RetreatBar;
+	
 private:
 	static void SetIconRow(TConstArrayView<UCardEnergyIconWidget*> Icons, TConstArrayView<ECardEnergyType> Types);
+	
+	// The designer's UI metal, restored when the card data has no UIMaterial
+	UPROPERTY(Transient)
+	TObjectPtr<UObject> DefaultUIMaterial;
+
+	void ApplyUIMaterial();
 };

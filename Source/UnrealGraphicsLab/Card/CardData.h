@@ -62,4 +62,7 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Card|Visuals")
 	TObjectPtr<UMaterialInterface> CardMaterial;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Card|Visuals")
+	TObjectPtr<UMaterialInterface> UIMaterial;
 };

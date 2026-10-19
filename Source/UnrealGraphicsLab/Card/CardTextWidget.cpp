@@ -3,6 +3,9 @@
 #include "CardData.h"
 #include "CardEnergyIconWidget.h"
 #include "Components/TextBlock.h"
+#include "Components/Border.h"
+#include "Components/Image.h"
+#include "Materials/MaterialInterface.h"
 
 void UCardTextWidget::SetCardData(UCardData* InCardData)
 {
@@ -16,6 +19,8 @@ void UCardTextWidget::Refresh()
 	{
 		return;
 	}
+	
+	ApplyUIMaterial();
 	
 	// Header
 	TitleText->SetText(CardData->Name);
@@ -89,6 +94,28 @@ void UCardTextWidget::SetIconRow(TConstArrayView<UCardEnergyIconWidget*> Icons, 
 		{
 			Icons[i]->SetVisibility(ESlateVisibility::Hidden);
 		}
+	}
+}
+
+void UCardTextWidget::ApplyUIMaterial()
+{
+	// Remember the designer's metal the first time, so an empty UIMaterial can restore it
+	if (!DefaultUIMaterial)
+	{
+		DefaultUIMaterial = StageBadge->Background.GetResourceObject();
+	}
+	
+	UObject* Material = CardData->UIMaterial ? CardData->UIMaterial.Get() : DefaultUIMaterial.Get();
+	UMaterialInterface* UIMaterial = Cast<UMaterialInterface>(Material);
+	if (!UIMaterial)
+	{
+		return;
+	}
+	
+	StageBadge->SetBrushFromMaterial(UIMaterial);
+	for (UImage* Bar : { WeaknessBar.Get(), ResistanceBar.Get(), RetreatBar.Get() })
+	{
+		Bar->SetBrushFromMaterial(UIMaterial);
 	}
 }
 
