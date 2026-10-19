@@ -138,10 +138,16 @@ float3 Card_Sheen(float2 UV, float3 ViewTS, float Frequency, float Width, float 
 }
 
 // Foil color: tinted metal facing the camera, rainbow towards grazing angles
-float3 Card_HoloFoil(float2 UV, float3 ViewTS, float Frequency, float ViewInfluence, float3 Tint, float Rainbow)
+// FacetShift breaks the bands into prism crystals (0 = smooth bands)
+float3 Card_HoloFoil(float2 UV, float3 ViewTS, float Frequency, float ViewInfluence,
+                     float3 Tint, float Rainbow, float FacetDensity, float FacetShift)
 {
+    float Edge;
+    float Facet = GL_Voronoi(UV * FacetDensity, Edge);
+    
     float Phase = (UV.x + UV.y) * Frequency // diagonal bands across the card
-                + (ViewTS.x + ViewTS.y) * ViewInfluence; // shifted by the angle
+                + (ViewTS.x + ViewTS.y) * ViewInfluence // shifted by the angle
+                + Facet * FacetShift; // each crystal offset by its own random amount
     
     float3 Spectrum = GL_Spectrum(Phase);
     

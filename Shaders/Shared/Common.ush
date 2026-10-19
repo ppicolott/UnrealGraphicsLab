@@ -4,6 +4,10 @@
 static const float2 GL_HASH_SCALE = float2(123.34, 456.21);
 static const float GL_HASH_BIAS = 45.32;
 
+// Arbitrary lattice offsets so each cell gets independent random numbers
+static const float2 GL_VORONOI_SEED_Y = float2(37.0, 17.0);
+static const float2 GL_VORONOI_SEED_ID = float2(71.0, 43.0);
+
 float GL_Hash21(float2 P)
 {
     P = frac(P * GL_HASH_SCALE);
@@ -32,6 +36,42 @@ float GL_ValueNoise(float2 P)
     float D = GL_Hash21(I + float2(1.0, 1.0));
     
     return lerp(lerp(A, B, U.x), lerp(C, D, U.x), U.y);
+}
+
+// Cellular (Voronoi) noise. Returns a random value (0..1) per facet; Edge is 0 on the border between two facets
+float GL_Voronoi(float2 P, out float Edge)
+{
+    float2 Cell = floor(P);
+    float2 Local = frac(P);
+    
+    float Nearest = 8.0;
+    float Second = 8.0;
+    float Id = 0.0;
+    
+    // The closest site is always in this cell or one of its 8 neighbours
+    for (int Y = -1; Y <= 1; ++Y)
+    {
+        for (int X = -1; X <= 1; ++X)
+        {
+            float2 Neighbour = Cell + float2(X, Y);
+            float2 Site = float2(GL_HashLattice(Neighbour), GL_HashLattice(Neighbour + GL_VORONOI_SEED_Y));
+            float D = length(float2(X, Y) + Site - Local);
+            
+            if (D < Nearest)
+            {
+                Second = Nearest;
+                Nearest = D;
+                Id = GL_HashLattice(Neighbour + GL_VORONOI_SEED_ID);
+            }
+            else if (D < Second)
+            {
+                Second = D;
+            }
+        }
+    }
+    
+    Edge = Second - Nearest;
+    return Id;
 }
 
 // Random unit direction for a cell
