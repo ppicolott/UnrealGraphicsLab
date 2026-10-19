@@ -25,10 +25,37 @@ public:
 	UFUNCTION(CallInEditor, BlueprintCallable, Category = "Card")
 	void RefreshCard();
 	
+	UFUNCTION(BlueprintCallable, Category = "Card")
+	void SetTiltInput(FVector2D InTilt);
+	
+	void AddUserRotation(float DeltaYaw, float DeltaPitch);
+	
+	UFUNCTION(BlueprintCallable, Category = "Card")
+	void ResetUserRotation();
+	
+	void PlaceFacing(const FVector& Center, const FVector& ToViewer);
+
 protected:
 	virtual void OnConstruction(const FTransform& Transform) override;
 	
 	virtual void BeginPlay() override;
+	
+	virtual void Tick(float DeltaSeconds) override;
+	
+	UPROPERTY(EditAnywhere, Category = "Card|Motion", meta = (ClampMin = 0, ClampMax = 45, Units = "Degrees"))
+	float MaxTiltAngle = 15.0f;
+	
+	UPROPERTY(EditAnywhere, Category = "Card|Motion", meta = (ClampMin = 0))
+	float TiltSpeed = 8.0f;
+	
+	UPROPERTY(EditAnywhere, Category = "Card|Motion", meta = (ClampMin = 0, ClampMax = 89, Units = "Degrees"))
+	float MaxUserPitch = 30.0f;
+	
+	UPROPERTY(EditAnywhere, Category = "Card|Motion", meta = (ClampMin = 0))
+	float UserRotationSpeed = 20.0f;
+	
+	UPROPERTY(EditAnywhere, Transient, Category = "Card|Motion")
+	FVector2D TiltInput = FVector2D::ZeroVector;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Card")
 	TObjectPtr<UStaticMeshComponent> CardMesh;
@@ -64,4 +91,9 @@ private:
 	
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> CardMaterial;
+	
+	FQuat RestRotation = FQuat::Identity;
+	
+	float UserYaw = 0.0f;
+	float UserPitch = 0.0f;
 };

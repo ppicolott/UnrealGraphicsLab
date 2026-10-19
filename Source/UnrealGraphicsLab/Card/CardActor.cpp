@@ -11,7 +11,7 @@
 
 ACardActor::ACardActor()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
 	
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
 	
@@ -55,6 +55,7 @@ void ACardActor::OnConstruction(const FTransform& Transform)
 void ACardActor::BeginPlay()
 {
 	Super::BeginPlay();
+	RestRotation = CardMesh->GetRelativeRotation().Quaternion();
 	RefreshCard();
 }
 
@@ -107,4 +108,53 @@ void ACardActor::RedrawText() const
 	{
 		UCardTextLibrary::DrawWidgetToRenderTarget(TextWidget, PreviewTarget, TextScale);
 	}
+}
+
+void ACardActor::SetTiltInput(FVector2D InTilt)
+{
+	TiltInput = InTilt.ClampAxes(-1.0, 1.0);
+}
+
+void ACardActor::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	
+	const FQuat Turn(FVector::UpVector, FMath::DegreesToRadians(TiltInput.X * MaxTiltAngle));
+	const FQuat Nod(FVector::ForwardVector, FMath::DegreesToRadians(TiltInput.Y * MaxTiltAngle));
+	
+	const FVector LocalFront = RestRotation * FVector::UpVector;
+	const FVector Horizontal = FVector::CrossProduct(LocalFront, FVector::UpVector).GetSafeNormal();
+	const FQuat UserTurn(FVector::UpVector, FMath::DegreesToRadians(UserYaw));
+	const FQuat UserTip(Horizontal, FMath::DegreesToRadians(UserPitch));
+	
+	const FQuat Target = UserTip * UserTurn * Turn * Nod * RestRotation;
+	
+	const bool bUserRotated = !FMath::IsNearlyZero(UserYaw) || !FMath::IsNearlyZero(UserPitch);
+	const float Speed = bUserRotated ? UserRotationSpeed : TiltSpeed;
+	
+	const FQuat Current = CardMesh->GetRelativeRotation().Quaternion();
+	CardMesh->SetRelativeRotation(FMath::QInterpTo(Current, Target, DeltaSeconds, Speed));
+}
+
+void ACardActor::AddUserRotation(float DeltaYaw, float DeltaPitch)
+{
+	UserYaw = FRotator::NormalizeAxis(UserYaw + DeltaYaw);
+	UserPitch = FMath::Clamp(UserPitch + DeltaPitch, -MaxUserPitch, MaxUserPitch);
+}
+
+void ACardActor::ResetUserRotation()
+{
+	UserYaw = 0.0f;
+	UserPitch = 0.0f;
+}
+
+void ACardActor::PlaceFacing(const FVector& Center, const FVector& ToViewer)
+{
+	const FVector LocalFront = RestRotation * FVector::UpVector;
+	
+	const float LocalYaw = FMath::RadiansToDegrees(FMath::Atan2(LocalFront.Y, LocalFront.X));
+	const float ViewerYaw = FMath::RadiansToDegrees(FMath::Atan2(ToViewer.Y, ToViewer.X));
+	SetActorRotation(FRotator(0.0f, ViewerYaw - LocalYaw, 0.0f));
+	
+	SetActorLocation(Center - (CardMesh->GetComponentLocation() - GetActorLocation()));
 }
