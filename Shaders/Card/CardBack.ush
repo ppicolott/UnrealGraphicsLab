@@ -10,25 +10,38 @@ float2 CardBack_UV(float2 UV, float Aspect, float Zoom)
 	return P / max(Zoom, 0.01) + 0.5;
 }
 
-// Gold elements turn into metal with the same grain as the front (returns Roughness)
-float CardBack_Surface(float2 CardUV, float Aspect, float GoldMask, float GoldRoughness,
-					   float GrainDensity, float GrainStrength, float GrainTolerance,
-					   out float Metallic, out float3 Normal)
+// Gold elements and the gold streaks turn into metal with the same grain as the front (returns Roughness)
+float CardBack_Surface(float2 CardUV, float Aspect, float GoldMask, float FlashMask, float FlashAmount,
+					   float GoldRoughness, float GrainDensity, float GrainStrength, float GrainTolerance,
+					   out float Metallic, out float3 Normal, out float SparkleMask)
 {
+	float MetalMask = max(GoldMask, saturate(FlashMask * FlashAmount));
+	
 	float GrainRoughness;
 	float2 GrainTilt = Card_GoldGrain(CardUV, Aspect, GrainDensity, GrainStrength, GrainTolerance, GrainRoughness);
 	
-	Metallic = GoldMask;
-	Normal = normalize(float3(GrainTilt * GoldMask, 1.0));
+	Metallic = MetalMask;
+	SparkleMask = MetalMask;
 	
-	float Roughness = lerp(CARD_BASE_ROUGHNESS, GoldRoughness, GoldMask);
-	return saturate(Roughness + GrainRoughness * GoldMask);
+	Normal = normalize(float3(GrainTilt * MetalMask, 1.0));
+	
+	float Roughness = lerp(CARD_BASE_ROUGHNESS, GoldRoughness, MetalMask);
+	return saturate(Roughness + GrainRoughness * MetalMask);
 }
 
-// "Makeup duochrome" on the swirls: the art's hue slides with the view angle
-float3 CardBack_BaseColor(float3 Art, float SwirlMask, float2 CardUV, float3 ViewTS, float Shift, float Spread)
+// "Makeup multichrome": the swirls' hue slides with the view angle, and the painted gold streaks (FlashMask) catch the light in turns
+float3 CardBack_BaseColor(float3 Art, float SwirlMask, float FlashMask, float2 CardUV, float3 ViewTS, float Shift, float Spread,
+						  float3 FlashColor, float FlashAmount, float FlashFrequency, float FlashViewInfluence)
 {
 	float Turns = (ViewTS.x + ViewTS.y) * Shift // tilting the card slides the hue
 				+ (CardUV.x + CardUV.y) * Spread; // soft diagonal gradient across the card
-	return lerp(Art, GL_HueShift(Art, Turns), SwirlMask);
+	float3 Color = lerp(Art, GL_HueShift(Art, Turns), SwirlMask);
+	
+	float Phase = (CardUV.x + CardUV.y) * FlashFrequency + (ViewTS.x + ViewTS.y) * FlashViewInfluence;
+	float Glint = 0.5 + 0.5 * cos(Phase * 2.0 * PI);
+	
+	float Luma = dot(Art, float3(0.2126, 0.7152, 0.0722));
+	float3 Flash = FlashColor * (1.0 + Luma);
+	
+	return lerp(Color, Flash, saturate(FlashMask * FlashAmount * lerp(0.6, 1.0, Glint)));
 }
