@@ -75,7 +75,7 @@ void ACardActor::SetGlare(FVector2D InUV, bool bInHovering)
 	bGlareHovering = bInHovering;
 	if (bInHovering)
 	{
-		GlareUV = InUV; // keep the last spot while it fades out
+		GlareTargetUV = InUV;
 	}
 }
 
@@ -169,6 +169,11 @@ void ACardActor::Tick(float DeltaSeconds)
 	CardMesh->SetRelativeRotation(FMath::QInterpTo(Current, Target, DeltaSeconds, Speed));
 	
 	GlareAmount = FMath::FInterpTo(GlareAmount, bGlareHovering ? 1.0f : 0.0f, DeltaSeconds, GlareFadeSpeed);
+	
+	// Trail the mouse a little; jump straight there while the glare is invisible
+	GlareUV = GlareAmount < 0.01f ? GlareTargetUV :
+									FMath::Vector2DInterpTo(GlareUV, GlareTargetUV, DeltaSeconds, GlareFollowSpeed);
+	
 	if (CardMaterial)
 	{
 		CardMaterial->SetScalarParameterValue(TEXT("GlareAmount"), GlareAmount);

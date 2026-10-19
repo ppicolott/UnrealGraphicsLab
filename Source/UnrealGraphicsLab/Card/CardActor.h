@@ -88,6 +88,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Card|Glare", meta = (ClampMin = 0))
 	float GlareFadeSpeed = 6.0f;
 	
+	UPROPERTY(EditAnywhere, Category = "Card|Glare", meta = (ClampMin = 0))
+	float GlareFollowSpeed = 36.0f;
+	
 private:
 	void UpdateMaterial();
 	void RedrawText() const;
@@ -106,4 +109,5 @@ private:
 	FVector2D GlareUV = FVector2D(0.5, 0.5);
 	bool bGlareHovering = false;
 	float GlareAmount = 0.0f;
+	FVector2D GlareTargetUV = FVector2D(0.5, 0.5);
 };
