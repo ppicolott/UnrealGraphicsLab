@@ -1,6 +1,7 @@
 #pragma once
 
 #include "/GraphicsLab/Shared/Common.ush"
+#include "/GraphicsLab/Card/Backdrop.ush"
 
 // Seed offsets for GL_Hash21 (arbitrary nonintegers)
 static const float CARD_SEED_OFFSET_X = 3.1;
@@ -259,6 +260,24 @@ float4 Card_Signature(Texture2D Signature, SamplerState SignatureSampler, float2
     return float4(Color, Amount);
 }
 
+// The metal frame mirrors the purple backdrop instead of the studio HDRI
+// The backdrop is laid out by how far the reflection points up or down (world Z), so it surrounds the card
+float3 Card_BackdropReflection(float3 ReflectionWS, float3 MetalColor, float MetalAmount, float Amount,
+                               float3 TopColor, float3 BottomColor, float3 GlowColor,
+                               float GlowIntensity, float GlowHeight, float GlowThickness,
+                               out float3 MirrorMetalColor)
+{
+    MirrorMetalColor = MetalColor * (1.0 - Amount);
+    
+    // Straight up = 0 (the backdrop's top), horizon = 0.5, straight down = 1
+    float V = saturate(0.5 - normalize(ReflectionWS).z * 0.5);
+    float2 BackdropUV = float2(0.5, V);
+    
+    float Glow = Backdrop_Glow(BackdropUV, GlowHeight, GlowThickness, 1.0);
+    float3 Backdrop = Backdrop_Gradient(BackdropUV, TopColor, BottomColor) + GlowColor * Glow * GlowIntensity;
+    return Backdrop * MetalColor * MetalAmount * Amount;
+}
+
 // Surface response of the frame and art foil (returns Roughness)
 float Card_Surface(float MetalAmount, float HoloAmount, float ArtFoilAmount, float GoldAmount,
                    float MetalRoughness, float HoloRoughness, float3 MetalNormal, float MetalNormalStrength,
@@ -288,9 +307,10 @@ float Card_Surface(float MetalAmount, float HoloAmount, float ArtFoilAmount, flo
 }
 
 // Glow from the holo frame, sparkles and sheen, hidden under the text
-float3 Card_Emissive(float3 Holo, float HoloIntensity, float HoloAmount, float Sparkles, float3 Sheen, float3 GoldSparkles, float TextAmount)
+float3 Card_Emissive(float3 Holo, float HoloIntensity, float HoloAmount, float Sparkles, 
+                     float3 Sheen, float3 GoldSparkles, float TextAmount, float3 Reflection)
 {
-    float3 Glow = Holo * HoloIntensity * HoloAmount + Sparkles + Sheen + GoldSparkles;
+    float3 Glow = Holo * HoloIntensity * HoloAmount + Sparkles + Sheen + GoldSparkles + Reflection;
     return Glow * (1.0 - TextAmount);
 }
 
