@@ -1,0 +1,36 @@
+#pragma once
+
+// UV.y grows downwards, so 0 is the top
+float3 Backdrop_Gradient(float2 UV, float3 TopColor, float3 BottomColor)
+{
+	float T = smoothstep(0.0, 1.0, UV.y);
+	return lerp(TopColor, BottomColor, T);
+}
+
+// Soft band of light near the bottom, fading towards the sides (0..1)
+float Backdrop_Glow(float2 UV, float Height, float Thickness, float Spread)
+{
+	float Y = (UV.y - Height) / max(Thickness, 0.001);
+	float X = (UV.x - 0.5) * 2.0 / max(Spread, 0.001);
+	float Vertical = exp(-Y * Y);
+	float Horizontal = saturate(1.0 - X * X);
+	return Vertical * Horizontal;
+}
+
+// Darkens the screen corners (ScreenUV is 0..1 across the viewport); 1 = untouched
+float Backdrop_Vignette(float2 ScreenUV, float Strength, float Radius, float Softness)
+{
+	float2 P = (ScreenUV - 0.5) * 2.0;
+	float D = length(P);
+	return 1.0 - Strength * smoothstep(Radius, Radius + Softness, D);
+}
+
+// Final backdrop color: gradient plus the glow, darkened at the screen corners
+float3 Backdrop_Color(float2 UV, float3 TopColor, float3 BottomColor,
+		float3 GlowColor, float GlowIntensity, float GlowHeight, float GlowThickness, float GlowSpread,
+		float2 ScreenUV, float VignetteStrength, float VignetteRadius, float VignetteSoftness)
+{
+	float Glow = Backdrop_Glow(UV, GlowHeight, GlowThickness, GlowSpread);
+	float3 Color = Backdrop_Gradient(UV, TopColor, BottomColor) + GlowColor * Glow * GlowIntensity;
+	return Color * Backdrop_Vignette(ScreenUV, VignetteStrength, VignetteRadius, VignetteSoftness);
+}
