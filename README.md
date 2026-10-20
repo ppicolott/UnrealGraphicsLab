@@ -6,7 +6,7 @@ The first experiment is a set of **holographic trading cards** starring Nina, a 
 
 ![Golden, Holo and Ultra Rare cards](docs/media/hero.jpg)
 
-<!-- Hero shots video: drag Saved/MovieRenders/Nina_HeroShots.mp4 into this spot in the GitHub editor -->
+https://github.com/user-attachments/assets/b20e2937-93ff-4b68-b574-fa66ad048c63
 
 ## Highlights
 
