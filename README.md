@@ -114,7 +114,7 @@ The cards star Nina, my corgi. Here she is helping me at the desk.
 
 ## Art and credits
 
-Several images were generated with AI (ChatGPT): the Nina poses, the card backgrounds and the card back. The cards that use them carry an "AI Generated" stamp.
+Several images were generated with AI (ChatGPT): the Nina poses, the card backgrounds and the card back. The cards that use them carry an "AI Generated Images" stamp.
 
 The bandana corgi and the sunny meadow are original art by Giovana Picolott ([@picolottatelier](https://www.instagram.com/picolottatelier/)), used with permission.
 
