@@ -122,7 +122,7 @@ void ACardViewerPawn::UpdateSlide(float DeltaSeconds)
 	const float Eased = FMath::InterpEaseInOut(0.0f, 1.0f, SlideAlpha, 2.0f);
 	
 	const FVector Center = GetShowcaseCenter();
-	const FVector Slide = Camera->GetRightVector() * (SlideDirection * SlideDistance);
+	const FVector Slide = Camera->GetRightVector() * (-SlideDirection * SlideDistance);
 	const FVector ToViewer = -Camera->GetForwardVector();
 	
 	if (ACardActor* Incoming = GetCard(CurrentIndex))
