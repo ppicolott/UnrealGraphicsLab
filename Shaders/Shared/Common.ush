@@ -1,6 +1,144 @@
 #pragma once
 
-float3 GL_TestColor()
+// Hash scramble constants, which are arbitrary, chosen only to mix the input
+static const float2 GL_HASH_SCALE = float2(123.34, 456.21);
+static const float GL_HASH_BIAS = 45.32;
+
+// Arbitrary lattice offsets so each cell gets independent random numbers
+static const float2 GL_VORONOI_SEED_Y = float2(37.0, 17.0);
+static const float2 GL_VORONOI_SEED_ID = float2(71.0, 43.0);
+
+float GL_Hash21(float2 P)
 {
-    return float3(1, 0, 1); // Test
+    P = frac(P * GL_HASH_SCALE);
+    P += dot(P, P + GL_HASH_BIAS);
+    return frac(P.x * P.y);
+}
+
+// Hash for integer lattice points, where GL_Hash21 repeats in regular steps ("Hash without Sine", Dave Hoskins)
+float GL_HashLattice(float2 P)
+{
+    float3 P3 = frac(P.xyx * 0.1031);
+    P3 += dot(P3, P3.yzx + 33.33);
+    return frac((P3.x + P3.y) * P3.z);
+}
+
+// Smooth random field: hashes the 4 corners of the cell and blends them with a smoothstep curve
+float GL_ValueNoise(float2 P)
+{
+    float2 I = floor(P);
+    float2 F = frac(P);
+    float2 U = F * F * (3.0 - 2.0 * F);
+    
+    float A = GL_Hash21(I);
+    float B = GL_Hash21(I + float2(1.0, 0.0));
+    float C = GL_Hash21(I + float2(0.0, 1.0));
+    float D = GL_Hash21(I + float2(1.0, 1.0));
+    
+    return lerp(lerp(A, B, U.x), lerp(C, D, U.x), U.y);
+}
+
+// Cellular (Voronoi) noise. Returns a random value (0..1) per facet; Edge is 0 on the border between two facets
+float GL_Voronoi(float2 P, out float Edge)
+{
+    float2 Cell = floor(P);
+    float2 Local = frac(P);
+    
+    float Nearest = 8.0;
+    float Second = 8.0;
+    float Id = 0.0;
+    
+    // The closest site is always in this cell or one of its 8 neighbours
+    for (int Y = -1; Y <= 1; ++Y)
+    {
+        for (int X = -1; X <= 1; ++X)
+        {
+            float2 Neighbour = Cell + float2(X, Y);
+            float2 Site = float2(GL_HashLattice(Neighbour), GL_HashLattice(Neighbour + GL_VORONOI_SEED_Y));
+            float D = length(float2(X, Y) + Site - Local);
+            
+            if (D < Nearest)
+            {
+                Second = Nearest;
+                Nearest = D;
+                Id = GL_HashLattice(Neighbour + GL_VORONOI_SEED_ID);
+            }
+            else if (D < Second)
+            {
+                Second = D;
+            }
+        }
+    }
+    
+    Edge = Second - Nearest;
+    return Id;
+}
+
+// Random unit direction for a cell
+float2 GL_RandomGradient(float2 Cell)
+{
+    float Angle = GL_HashLattice(Cell) * 6.2832;
+    return float2(cos(Angle), sin(Angle));
+}
+
+// Smooth organic noise: each corner has a random direction instead of a random value (0..1)
+float GL_GradientNoise(float2 P)
+{
+    float2 I = floor(P);
+    float2 F = frac(P);
+    float2 U = F * F * F * (F * (F * 6.0 - 15.0) + 10.0);
+    
+    float A = dot(GL_RandomGradient(I), F);
+    float B = dot(GL_RandomGradient(I + float2(1.0, 0.0)), F - float2(1.0, 0.0));
+    float C = dot(GL_RandomGradient(I + float2(0.0, 1.0)), F - float2(0.0, 1.0));
+    float D = dot(GL_RandomGradient(I + float2(1.0, 1.0)), F - float2(1.0, 1.0));
+    
+    return lerp(lerp(A, B, U.x), lerp(C, D, U.x), U.y) * 0.7071 + 0.5;
+}
+
+float GL_SDRoundedBox(float2 P, float2 HalfSize, float Radius)
+{
+    float2 Q = abs(P) - HalfSize + Radius;
+    return length(max(Q, 0.0)) + min(max(Q.x, Q.y), 0.0) - Radius;
+}
+
+float GL_Fill(float D)
+{
+    return saturate(0.5 - D / fwidth(D));
+}
+
+float3 GL_Rainbow(float T)
+{
+    // Cosine palette (Inigo Quilez)
+    return 0.5 + 0.5 * cos(6.28318 * (T + float3(0.0, 0.33, 0.67)));
+}
+
+float3 GL_Spectrum(float T)
+{
+    // Full hue wheel
+    float3 C = abs(frac(T + float3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0) - 1.0;
+    return saturate(C);
+}
+
+float GL_SDStar5(float2 P, float R, float InnerRatio)
+{
+    const float2 K1 = float2(0.809016994, -0.587785252);
+    const float2 K2 = float2(-K1.x, K1.y);
+    P.x = abs(P.x);
+    P -= 2.0 * max(dot(K1, P), 0.0) * K1; // fold into one arm of the star
+    P -= 2.0 * max(dot(K2, P), 0.0) * K2;
+    P.x = abs(P.x);
+    P.y -= R;
+    float2 BA = InnerRatio * float2(-K1.y, K1.x) - float2(0.0, 1.0);
+    float H = clamp(dot(P, BA) / dot(BA, BA), 0.0, R);
+    return length(P - BA * H) * sign(P.y * BA.x - P.x * BA.y);
+}
+
+// Rodrigues' Rotation - Rotates the hue around the gray axis, keeping brightness (Turns = 1 is a full circle)
+float3 GL_HueShift(float3 Color, float Turns)
+{
+    float Angle = Turns * 2.0 * PI;
+    float3 Axis = float3(0.57735, 0.57735, 0.57735); // normalized (1, 1, 1): the gray axis
+    float C = cos(Angle);
+    return Color * C + cross(Axis, Color) * sin(Angle) + Axis * dot(Axis, Color) * (1.0 - C);
 }

@@ -35,6 +35,7 @@
 *.xcodeproj
 *.xcworkspace
 *.sln
+*.slnx
 *.suo
 *.opensdf
 *.sdf
@@ -45,6 +46,11 @@
 # Precompiled Assets
 SourceArt/**/*.png
 SourceArt/**/*.tga
+SourceArt/**/*.hdr
+
+# Source images belong in SourceArt/, never in Content/
+Content/**/*.png
+Content/**/*.tga
 
 # Binary Files
 Binaries/*
@@ -73,3 +79,7 @@ Plugins/**/Intermediate/*
 
 # Cache files for the editor to use
 DerivedDataCache/*
+
+
+# Rider
+.idea/

@@ -1,0 +1,377 @@
+#pragma once
+
+#include "/GraphicsLab/Shared/Common.ush"
+#include "/GraphicsLab/Card/Backdrop.ush"
+
+// Seed offsets for GL_Hash21 (arbitrary nonintegers)
+static const float CARD_SEED_OFFSET_X = 3.1;
+static const float CARD_SEED_OFFSET_Y = 7.7;
+static const float CARD_SEED_SIZE = 11.3;
+static const float CARD_SEED_TILT = 17.9;
+
+static const float CARD_ART_CENTER_Y = -0.13;
+static const float CARD_ART_HALF_HEIGHT  = 0.22;
+
+static const float CARD_SEED_STAR = 23.7;
+static const float CARD_SEED_STAR_SIZE = 29.3;
+
+static const float CARD_BASE_ROUGHNESS = 0.5;
+
+static const float CARD_TEXT_GAMMA = 2.2;
+
+static const float CARD_SEED_GRAIN_X = 31.7;
+static const float CARD_SEED_GRAIN_Y = 37.1;
+static const float CARD_SEED_GRAIN_ROUGHNESS = 41.3;
+
+// Card silhouette for the Opacity Mask (1 = inside the rounded card, 0 = outside)
+float Card_OpacityMask(float2 UV, float Aspect, float Radius)
+{
+    float2 P = UV - 0.5;
+    float D = GL_SDRoundedBox(P, float2(0.5 * Aspect, 0.5), Radius);
+    return D <= 0.0 ? 1.0 : 0.0;
+}
+
+// Card layout masks (R = frame, G = art)
+float2 Card_Layout(float2 UV, float Aspect, float Radius, float Border, float Feather, float FullArt, float Overflow,
+                   float ForegroundAspect, float BackgroundAspect, float BackgroundZoom, float2 BackgroundOffset,
+                   float3 ViewTS, float ForegroundDepth, float BackgroundDepth,
+                   float ForegroundZoom, float2 ForegroundOffset, float UseCropForeground,
+                   out float2 ArtUV, out float ArtBounds, out float2 BackgroundUV, out float2 CardUV)
+{
+    float2 P = UV - 0.5;
+    
+    // Parallax
+    float2 ViewShift = ViewTS.xy / max(ViewTS.z, 0.25);
+    float2 PF = P + ViewShift * ForegroundDepth;
+    float2 PB = P - ViewShift * BackgroundDepth;
+    
+    float2 CardHalf = float2(0.5 * Aspect, 0.5);
+    
+    CardUV = P / (2.0 * CardHalf) + 0.5;
+    
+    float Card = GL_Fill(GL_SDRoundedBox(P, CardHalf, Radius));
+    
+    // Feather > 0 fades the frame into the art across the seam instead of a hard cut
+    float InnerDistance = GL_SDRoundedBox(P, CardHalf - Border, max(Radius - Border, 0.0));
+    float Inner = Feather > 0.0 ? 1.0 - smoothstep(-0.5 * Feather, 0.5 * Feather, InnerDistance)
+                                : GL_Fill(InnerDistance);
+    
+    float Frame = Card - Inner;
+    
+    // V grows downwards, so negative y = top
+    float2 ArtHalf = float2(CardHalf.x - 2.0 * Border, CARD_ART_HALF_HEIGHT);
+    float2 ArtCenter = float2(0.0, CARD_ART_CENTER_Y);
+    float ArtWindow = GL_Fill(GL_SDRoundedBox(P - ArtCenter, ArtHalf, 0.01));
+    float Art = FullArt > 0.5 ? Inner : ArtWindow;
+    float2 ArtBoxCenter = FullArt > 0.5 ? float2(0.0, 0.0) : ArtCenter;
+    float2 WindowHalf = FullArt > 0.5 ? CardHalf - Border : ArtHalf;
+    float2 ArtBoxHalf = WindowHalf + Overflow;
+    
+    ArtUV = (PF - ArtBoxCenter) / (2.0 * ArtBoxHalf) + 0.5;
+    
+    float FitRatio = ForegroundAspect / (ArtBoxHalf.x / ArtBoxHalf.y);
+    float2 FitScale = FitRatio > 1.0 ? float2(1.0, FitRatio) : float2(1.0 / FitRatio, 1.0);
+    
+    // Foreground zoom (1 = fit) and offset (fraction of the art box)
+    ArtUV = (ArtUV - 0.5) / max(ForegroundZoom, 0.01) + 0.5 - ForegroundOffset;
+    
+    ArtUV = (ArtUV - 0.5) * FitScale + 0.5;
+    
+    ArtBounds = GL_Fill(GL_SDRoundedBox(PF - ArtBoxCenter, ArtBoxHalf, 0.0));
+    ArtBounds *= all(ArtUV == saturate(ArtUV)) ? 1.0 : 0.0;
+    
+    // Optionally clip the foreground to the art window (or the inner frame on full art)
+    ArtBounds *= lerp(1.0, Art, UseCropForeground);
+    
+    BackgroundUV = (PB - ArtBoxCenter) / (2.0 * WindowHalf) + 0.5;
+    float CoverRatio = BackgroundAspect / (WindowHalf.x / WindowHalf.y);
+    float2 CoverScale = CoverRatio > 1.0 ? float2(1.0 / CoverRatio, 1.0) : float2(1.0, CoverRatio);
+    
+    float Zoom = max(BackgroundZoom, 1.0);
+    float2 Visible = CoverScale / Zoom;
+    BackgroundUV = (BackgroundUV - 0.5) * Visible + 0.5 + BackgroundOffset * (1.0 - Visible) * 0.5;
+    
+    return float2(Frame, Art);
+}
+
+float Card_Sparkle(float2 UV, float3 ViewTS, float Density, float Sharpness, float Shape)
+{
+    float2 Grid = UV * Density;
+    float2 Cell = floor(Grid);
+    float2 Local = frac(Grid) - 0.5; // -0.5..0.5
+    
+    // Random flake shape
+    float2 Offset = float2(GL_Hash21(Cell + CARD_SEED_OFFSET_X), GL_Hash21(Cell + CARD_SEED_OFFSET_Y)) - 0.5;
+    float Size = lerp(0.08, 0.25, GL_Hash21(Cell + CARD_SEED_SIZE));
+    float2 FlakePos = Local - Offset * 0.5;
+    float DiamondDist = abs(FlakePos.x) + abs(FlakePos.y);
+    float RoundDist = length(FlakePos);
+    float Dist = Shape > 0.5 ? DiamondDist : RoundDist; // 0 = round, 1 = diamond
+    float Dot = saturate(1.0 - Dist / Size); // 1 at the center, 0 at the edge
+    Dot *= Dot; // softer falloff
+    
+    // Random flake tilt
+    float2 Tilt = float2(GL_Hash21(Cell), GL_Hash21(Cell + CARD_SEED_TILT)) * 2.0 - 1.0;
+    float3 FacetNormal = normalize(float3(Tilt * 0.5, 1.0));
+    float Align = saturate(dot(normalize(ViewTS), FacetNormal));
+    
+    return Dot * pow(Align, Sharpness);
+}
+
+// Dense micro glints on the gold art: gold when faint, white at the peak, faded like the grain
+float3 Card_GoldSparkles(float2 UV, float Aspect, float3 ViewTS, float Density, float Sharpness,
+                         float Intensity, float Tolerance, float3 Tint, float GoldMask)
+{
+    float2 SparkleUV = UV * float2(Aspect, 1.0);
+    float Glint = Card_Sparkle(SparkleUV, ViewTS, Density, Sharpness, 0.0);
+    
+    float CellsPerPixel = length(fwidth(SparkleUV * Density));
+    float Fade = 1.0 - smoothstep(Tolerance, Tolerance * 2.0, CellsPerPixel);
+    
+    float3 Color = lerp(Tint, 1.0, Glint);
+    return Color * Glint * Intensity * Fade * GoldMask;
+}
+
+float3 Card_Sheen(float2 UV, float3 ViewTS, float Frequency, float Width, float ViewInfluence, float Whiteness)
+{
+    float Phase = (UV.x + UV.y) * Frequency // diagonal stripes
+                + (ViewTS.x + ViewTS.y) * ViewInfluence; // slide with the angle
+    float Dist = abs(frac(Phase) - 0.5);
+    float Band = smoothstep(Width, 0.0, Dist);
+    float3 Color = lerp(GL_Spectrum((frac(Phase) - 0.5) / (2.0 * Width) + 0.5), 1.0, Whiteness);
+    return Band * Color;
+}
+
+// Foil color: tinted metal facing the camera, rainbow towards grazing angles
+// FacetShift breaks the bands into prism crystals (0 = smooth bands)
+float3 Card_HoloFoil(float2 UV, float3 ViewTS, float Frequency, float ViewInfluence,
+                     float3 Tint, float Rainbow, float FacetDensity, float FacetShift,
+                     float Pastel, float EdgeWidth, float EdgeStrength)
+{
+    float Edge;
+    float Facet = GL_Voronoi(UV * FacetDensity, Edge);
+    
+    float Phase = (UV.x + UV.y) * Frequency // diagonal bands across the card
+                + (ViewTS.x + ViewTS.y) * ViewInfluence // shifted by the angle
+                + Facet * FacetShift; // each crystal offset by its own random amount
+    
+    float3 Spectrum = GL_Spectrum(Phase);
+    Spectrum = lerp(Spectrum, 1.0, Pastel); // 0 = vivid rainbow, 1 = white
+    
+    // Tinted foil keeps the bands as brightness only
+    float3 Tinted = Tint * lerp(0.6, 1.0, 0.5 + 0.5 * cos(Phase * 2.0 * PI));
+    
+    // 0 facing the camera, grows as the card tilts away
+    float Grazing = 1.0 - saturate(normalize(ViewTS).z);
+    float RainbowMix = saturate(Rainbow * (1.0 + Grazing));
+    
+    float3 Color = lerp(Tinted, Spectrum, RainbowMix);
+
+    // Cracked ice: thin bright lines on the facet borders, each one catching the light at its own angle
+    float Line = 1.0 - smoothstep(0.0, EdgeWidth, Edge);
+    float Glint = 0.5 + 0.5 * cos((ViewTS.x + ViewTS.y) * ViewInfluence * 2.0 * PI + Facet * 2.0 * PI);
+    
+    return lerp(Color, 1.0, Line * Glint * EdgeStrength);
+}
+
+// Gradient map from the art's brightness to gold: dark shadows, Tint midtones, pale highlights
+float3 Card_GoldWash(float3 Color, float3 Tint, float Amount)
+{
+    // Rec. 709 luminance; sqrt brings linear back to roughly perceptual brightness
+    float Luma = sqrt(dot(Color, float3(0.2126, 0.7152, 0.0722)));
+    
+    float3 Dark = Tint * 0.1;
+    float3 Light = lerp(Tint, 1.0, 0.5);
+    float3 Gold = Luma < 0.5 ? lerp(Dark, Tint, Luma * 2.0) : lerp(Tint, Light, Luma * 2.0 - 1.0);
+    
+    return lerp(Color, Gold, Amount);
+}
+
+float Card_Stars(float2 UV, float Aspect, float Density, float Size, float Coverage)
+{
+    float2 Grid = UV * float2(Aspect, 1.0) * Density;
+    float2 Cell = floor(Grid);
+    float2 Local = frac(Grid) - 0.5; // -0.5..0.5
+    
+    float Present = GL_Hash21(Cell + CARD_SEED_STAR) < Coverage ? 1.0 : 0.0;
+    float Radius = Size * lerp(0.5, 1.0, GL_Hash21(Cell + CARD_SEED_STAR_SIZE));
+    float2 Offset = float2(GL_Hash21(Cell + CARD_SEED_OFFSET_X), GL_Hash21(Cell + CARD_SEED_OFFSET_Y)) - 0.5;
+    float2 StarPos = Local - Offset * (1.0 - 2.0 * Radius);
+    StarPos.y = -StarPos.y; // V grows downwards, flip so the star points up
+    
+    float D = GL_SDStar5(StarPos, Radius, 0.45);
+    float AA = length(fwidth(Grid));
+    return saturate(0.5 - D / AA) * Present;
+}
+
+// Procedural foil masks: 0 = stars, 1 = diagonal stripes, 2 = diamonds
+float Card_FoilPattern(float2 UV, float Aspect, float Type, float Density, float Size, float Coverage)
+{
+    float2 Grid = UV * float2(Aspect, 1.0) * Density;
+    float2 Local = frac(Grid) - 0.5; // -0.5..0.5
+
+    float Stars = Card_Stars(UV, Aspect, Density, Size, Coverage);
+    float Stripes = GL_Fill(abs(frac(Grid.x + Grid.y) - 0.5) - Size);
+    float Diamonds = GL_Fill(abs(Local.x) + abs(Local.y) - Size);
+
+    float T = round(Type);
+    return T < 0.5 ? Stars : T < 1.5 ? Stripes : Diamonds;
+}
+
+float2 Card_GoldGrain(float2 UV, float Aspect, float Density, float Strength, float Tolerance, out float RoughnessOffset)
+{
+    float2 Grid = UV * float2(Aspect, 1.0) * Density;
+    
+    float2 Tilt = float2(GL_ValueNoise(Grid + CARD_SEED_GRAIN_X), GL_ValueNoise(Grid + CARD_SEED_GRAIN_Y)) * 2.0 - 1.0;
+    float Rough = GL_ValueNoise(Grid + CARD_SEED_GRAIN_ROUGHNESS) * 2.0 - 1.0;
+    
+    float CellsPerPixel = length(fwidth(Grid));
+    
+    // Cells per pixel: starts fading at Tolerance, gone at twice that (higher = visible farther, may flicker)
+    float Fade = 1.0 - smoothstep(Tolerance, Tolerance * 2.0, CellsPerPixel);
+    
+    // Grain too small to see still scatters light: what fades from the normal goes into roughness
+    RoughnessOffset = Rough * 0.5 * Strength * Fade + (1.0 - Fade) * Strength * 0.25;
+    
+    return Tilt * Strength * Fade;
+}
+
+// Concentric engraved rings around Center: a ripple that tilts the normal along the radius
+float2 Card_Rings(float2 ArtUV, float2 Center, float Frequency, float Strength, float Tolerance)
+{
+    float2 Offset = ArtUV - Center;
+    float Dist = length(Offset);
+    float2 Radial = Offset / max(Dist, 1e-4); // direction pointing away from the center
+    
+    float Phase = Dist * Frequency;
+    
+    float Fade = 1.0 - smoothstep(Tolerance, Tolerance * 2.0, fwidth(Phase));
+    
+    return Radial * sin(Phase * 2.0 * PI) * Strength * Fade;
+}
+
+// Artist signature stamped anywhere on the card, merged over the text layer so it behaves as matte ink.
+float4 Card_Signature(Texture2D Signature, SamplerState SignatureSampler, float2 CardUV, float Aspect,
+                      float2 Center, float Height, float RotationDegrees, float3 Tint, float Opacity,
+                      float3 Text, float TextAmount)
+{
+    float TextureWidth, TextureHeight;
+    Signature.GetDimensions(TextureWidth, TextureHeight);
+    float SignatureAspect = TextureWidth / max(TextureHeight, 1.0);
+    
+    // Card UV -> signature UV, measured in card heights so the signature keeps its own proportions
+    float2 P = (CardUV - Center) * float2(Aspect, 1.0);
+    float Angle = radians(RotationDegrees);
+    float S = sin(Angle);
+    float C = cos(Angle);
+    P = float2(C * P.x + S * P.y, -S * P.x + C * P.y);
+    float2 Local = P / (max(Height, 0.001) * float2(SignatureAspect, 1.0)) + 0.5;
+    float Inside = all(Local == saturate(Local)) ? 1.0 : 0.0;
+    
+    // SampleGrad for the ray tracing hit shaders, like CardBack_SymbolAt
+    float4 Ink = Signature.SampleGrad(SignatureSampler, Local, ddx(Local), ddy(Local));
+    float InkAmount = Ink.a * Inside * Opacity;
+    float3 InkColor = pow(Ink.rgb * Tint, 1.0 / CARD_TEXT_GAMMA);
+    
+    // "Over" blend: the ink on top of whatever text is already there
+    float Amount = InkAmount + TextAmount * (1.0 - InkAmount);
+    float3 Color = (InkColor * InkAmount + Text * TextAmount * (1.0 - InkAmount)) / max(Amount, 0.0001);
+    return float4(Color, Amount);
+}
+
+// The metal frame mirrors the purple backdrop instead of the studio HDRI
+// The backdrop is laid out by how far the reflection points up or down (world Z), so it surrounds the card
+float3 Card_BackdropReflection(float3 ReflectionWS, float3 MetalColor, float MetalAmount, float Amount,
+                               float3 TopColor, float3 BottomColor, float3 GlowColor,
+                               float GlowIntensity, float GlowHeight, float GlowThickness,
+                               out float3 MirrorMetalColor)
+{
+    MirrorMetalColor = MetalColor * (1.0 - Amount);
+    
+    // Straight up = 0 (the backdrop's top), horizon = 0.5, straight down = 1
+    float V = saturate(0.5 - normalize(ReflectionWS).z * 0.5);
+    float2 BackdropUV = float2(0.5, V);
+    
+    float Glow = Backdrop_Glow(BackdropUV, GlowHeight, GlowThickness, 1.0);
+    float3 Backdrop = Backdrop_Gradient(BackdropUV, TopColor, BottomColor) + GlowColor * Glow * GlowIntensity;
+    return Backdrop * MetalColor * MetalAmount * Amount;
+}
+
+// Soft light that follows the mouse over the card
+float3 Card_Glare(float2 UV, float2 Position, float Radius, float Intensity, float3 Tint, float Amount)
+{
+    float2 Delta = UV - Position; // the card mesh is a square plane, so raw UV is already round
+    // float Falloff = 1.0 - smoothstep(0.0, Radius, length(Delta));
+    float Falloff = exp(-4.0 * dot(Delta, Delta) / (Radius * Radius)); // gaussian: no edge, just fades
+    return Tint * Falloff * Falloff * Intensity * Amount;
+}
+
+// Surface response of the frame and art foil (returns Roughness)
+float Card_Surface(float MetalAmount, float HoloAmount, float ArtFoilAmount, float GoldAmount,
+                   float MetalRoughness, float HoloRoughness, float3 MetalNormal, float MetalNormalStrength,
+                   float2 UV, float Aspect, float GrainDensity, float GrainStrength, float GrainTolerance,
+                   float2 ArtUV, float RingMask, float2 RingCenter, float RingFrequency, float RingStrength,
+                   out float Metallic, out float3 Normal)
+{
+    float Roughness = lerp(CARD_BASE_ROUGHNESS, MetalRoughness, MetalAmount);
+    Roughness = lerp(Roughness, HoloRoughness, HoloAmount);
+    Roughness = lerp(Roughness, HoloRoughness, GoldAmount);
+    
+    Metallic = max(max(max(HoloAmount, MetalAmount), ArtFoilAmount), GoldAmount);
+    
+    Normal = lerp(float3(0.0, 0.0, 1.0), MetalNormal, MetalAmount * MetalNormalStrength);
+    
+    // Metallic grain on the foil and the gold art
+    float GrainRoughness;
+    float2 GrainTilt = Card_GoldGrain(UV, Aspect, GrainDensity, GrainStrength, GrainTolerance, GrainRoughness);
+    float GrainMask = max(HoloAmount, GoldAmount);
+    Roughness = saturate(Roughness + GrainRoughness * GrainMask);
+    
+    // Engraved rings only where the painted mask is white
+    float2 RingTilt = Card_Rings(ArtUV, RingCenter, RingFrequency, RingStrength, GrainTolerance) * RingMask;
+    Normal = normalize(Normal + float3((GrainTilt + RingTilt) * GrainMask, 0.0));
+    
+    return Roughness;
+}
+
+// Glow from the holo frame, sparkles and sheen, hidden under the text; the glare lights everything
+float3 Card_Emissive(float3 Holo, float HoloIntensity, float HoloAmount, float Sparkles,
+                     float3 Sheen, float3 GoldSparkles, float TextAmount, float3 Reflection, float3 Glare)
+{
+    float3 Glow = Holo * HoloIntensity * HoloAmount + Sparkles + Sheen + GoldSparkles + Reflection;
+    return Glow * (1.0 - TextAmount) + Glare;
+}
+
+// Card color built bottom to top: frame, card, art window, foreground, art foil, overlay, text
+float3 Card_BaseColor(float2 Layout, float3 CardBaseColor,
+                      float3 FrameColor, float3 MetalColor, float MetalAmount,
+                      float3 Holo, float HoloAmount,
+                      float3 ArtWindow, float ArtWindowOpacity,
+                      float3 Foreground, float ForegroundMask,
+                      float ArtFoilAmount, float3 GoldTint, float BackgroundGoldWash, float ForegroundGoldWash,
+                      float4 Text, float TextAmount, out float GoldMask)
+{
+    float Frame = Layout.x;
+    float Art = Layout.y;
+    
+    // Frame: Plain color, then metal, then holo
+    float3 FrameRGB = lerp(FrameColor, MetalColor, MetalAmount);
+    FrameRGB = lerp(FrameRGB, Holo, HoloAmount);
+    
+    // Gold wash on the art (0 = original colors)
+    ArtWindow = Card_GoldWash(ArtWindow, GoldTint, BackgroundGoldWash);
+    Foreground = Card_GoldWash(Foreground, GoldTint, ForegroundGoldWash);
+    
+    // Where the wash turns the art into metal (text stays matte ink)
+    GoldMask = max(Art * ArtWindowOpacity * BackgroundGoldWash, ForegroundMask * ForegroundGoldWash);
+    GoldMask *= 1.0 - TextAmount;
+    
+    float3 Color = lerp(CardBaseColor, FrameRGB, Frame);
+    Color = lerp(Color, ArtWindow, Art * ArtWindowOpacity);
+    Color = lerp(Color, Foreground, ForegroundMask);
+    Color = lerp(Color, Holo, ArtFoilAmount);
+    
+    // Same gamma the graph's Power node applied to the text layer
+    float3 TextColor = pow(Text.rgb, CARD_TEXT_GAMMA);
+    return lerp(Color, TextColor, TextAmount);
+}

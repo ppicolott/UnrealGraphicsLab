@@ -1,0 +1,24 @@
+# Credits
+
+Third-party assets used in UnrealGraphicsLab, grouped by effect.
+
+## Card
+
+| Asset | Used as | Author | Source | License |
+|---|---|---|---|---|
+| Pembroke Welsh Corgi, Puppy, Dog | `T_Corgi` (card foreground) and `T_Corgi_FoilMask` (derived foil mask) | [CreativeCanvasDesign](https://pixabay.com/users/creativecanvasdesign-45016655/) (AI-generated) | [Pixabay](https://pixabay.com/vectors/pembroke-welsh-corgi-puppy-dog-cute-10477106/) | [Pixabay Content License](https://pixabay.com/service/license-summary/) |
+| Sunlit Meadow Framed by Trees with Blooming Flowers | `T_Background` (card background) | [TyliJura](https://pixabay.com/users/tylijura-22072131/) (AI-generated) | [Pixabay](https://pixabay.com/illustrations/ai-generated-meadow-nature-9419882/) | [Pixabay Content License](https://pixabay.com/service/license-summary/) |
+| Nina character poses (Daisy, DaisyBloom, HeadTilt, HeadTiltWinter, Jump, JumpSnow, JumpSplash, JumpWinter, Proud, Rest, RestAutumn, RestLeaves, RestWinter, Run, RunAutumn, RunBeach, RunWinter, Stargaze) | `T_Nina_*` (card foreground) | Paula Picolott (AI-generated with ChatGPT), based on the corgi by [CreativeCanvasDesign](https://pixabay.com/users/creativecanvasdesign-45016655/) | Original work, derived from [Pixabay](https://pixabay.com/vectors/pembroke-welsh-corgi-puppy-dog-cute-10477106/) | Derived from content under the [Pixabay Content License](https://pixabay.com/service/license-summary/) |
+| Card backgrounds (AutumnPath, CherryBlossom, CountrysidePath, LakesideDock, MeadowLake, SnowyMountains, TropicalBeach, TwilightValley, Waterfall) | `T_Background_*` (card background) | Paula Picolott (AI-generated with ChatGPT) | Original work | All rights reserved |
+| Card back (cosmic paw design) | `T_CardBack` (card back), `T_CardBack_Symbol` (paw symbol taken from the art) and `T_CardBack_Masks` (derived gold/swirl/gold-streak masks; the streaks come from an unused yellow-swirl variant of the same art) | Paula Picolott (AI-generated with ChatGPT) | Original work | All rights reserved |
+| Corgi with a star bandana, sunny meadow and artist signature | `T_Background_SunMeadow` (card background), `T_Corgi_Bandana` (card foreground), `T_Corgi_BandanaScene` (full illustration) and `T_Signature_PicolottAtelier` (signature stamp, cropped and made white so it can be tinted) | Giovana Picolott ([@picolottatelier](https://www.instagram.com/picolottatelier/)) | Original work, used with permission | All rights reserved |
+| "AI Generated" stamp | `T_UI_AI_Generated` (signature stamp on the cards with AI-generated art) | Paula Picolott, made in Photopea with the [Cairo](https://fonts.google.com/specimen/Cairo) font by Mohamed Gaber and Accademia di Belle Arti di Urbino | Original work | All rights reserved; the font is under the [SIL Open Font License 1.1](https://openfontlicense.org/) |
+| Studio Small 09 | `TC_StudioSmall09` (HDRI for the card showcase lighting and reflections) | Sergej Majboroda | [Poly Haven](https://polyhaven.com/a/studio_small_09) | [CC0 1.0](https://polyhaven.com/license) |
+| Metal 009 | `Metal009_1K-PNG` textures (metal frame finish) | [ambientCG](https://ambientcg.com/) (Lennart Demes) | [ambientCG](https://ambientcg.com/view?id=Metal009) | [CC0 1.0](https://docs.ambientcg.com/license/) |
+| Round star | `round-star` (Colorless energy icon) | [Delapouite](https://delapouite.com/) | [game-icons.net](https://game-icons.net/1x1/delapouite/round-star.html) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) |
+| Fist | `fist` (Fighting energy icon) | [Lorc](https://lorcblog.blogspot.com/) | [game-icons.net](https://game-icons.net/1x1/lorc/fist.html) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) |
+| Fire | `fire` (Fire energy icon) | [sbed](https://opengameart.org/content/95-game-icons) | [game-icons.net](https://game-icons.net/1x1/sbed/fire.html) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) |
+| Water drop | `water-drop` (Water energy icon) | [sbed](https://opengameart.org/content/95-game-icons) | [game-icons.net](https://game-icons.net/1x1/sbed/water-drop.html) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) |
+| Electric | `electric` (Lightning energy icon) | [sbed](https://opengameart.org/content/95-game-icons) | [game-icons.net](https://game-icons.net/1x1/sbed/electric.html) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) |
+| Sprout | `sprout` (Grass energy icon) | [Lorc](https://lorcblog.blogspot.com/) | [game-icons.net](https://game-icons.net/1x1/lorc/sprout.html) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) |
+| Moon | `moon` (Darkness energy icon) | [Lorc](https://lorcblog.blogspot.com/) | [game-icons.net](https://game-icons.net/1x1/lorc/moon.html) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) |

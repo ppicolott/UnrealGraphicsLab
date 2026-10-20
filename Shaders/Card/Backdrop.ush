@@ -1,0 +1,149 @@
+#pragma once
+
+#include "/GraphicsLab/Shared/Common.ush"
+
+// Seed offsets for GL_Hash21 (arbitrary nonintegers)
+static const float BACKDROP_SEED_STAR = 53.1;
+static const float BACKDROP_SEED_OFFSET_X = 59.3;
+static const float BACKDROP_SEED_OFFSET_Y = 61.7;
+static const float BACKDROP_SEED_SIZE = 67.9;
+static const float BACKDROP_SEED_PHASE = 71.3;
+
+static const float BACKDROP_FOG_OCTAVE_SHIFT = 17.0;
+static const float2x2 BACKDROP_FOG_ROTATION = float2x2(0.8, -0.6, 0.6, 0.8); // Rotates each fBm layer (about 37°) so the layers' grids don't line up
+static const float2 BACKDROP_FOG_WARP_OFFSET = float2(5.2, 1.3);
+static const int BACKDROP_FOG_OCTAVES = 4;
+static const float BACKDROP_FOG_WARP_STRENGTH = 0.4;
+
+static const float BACKDROP_SEED_STREAK_PHASE = 79.1;
+static const float BACKDROP_SEED_STREAK_ACTIVE = 83.7;
+static const float BACKDROP_SEED_STREAK_COLOR = 89.3;
+static const float BACKDROP_STREAK_TRAVEL = 1.5;
+static const float BACKDROP_STREAK_HALO = 4.0;
+static const float BACKDROP_STREAK_HALO_STRENGTH = 0.25;
+
+// UV.y grows downwards, so 0 is the top
+float3 Backdrop_Gradient(float2 UV, float3 TopColor, float3 BottomColor)
+{
+	float T = smoothstep(0.0, 1.0, UV.y);
+	return lerp(TopColor, BottomColor, T);
+}
+
+// Soft band of light near the bottom, fading towards the sides (0..1)
+float Backdrop_Glow(float2 UV, float Height, float Thickness, float Spread)
+{
+	float Y = (UV.y - Height) / max(Thickness, 0.001);
+	float X = (UV.x - 0.5) * 2.0 / max(Spread, 0.001);
+	float Vertical = exp(-Y * Y);
+	float Horizontal = saturate(1.0 - X * X);
+	return Vertical * Horizontal;
+}
+
+// Darkens the screen corners (ScreenUV is 0..1 across the viewport); 1 = untouched
+float Backdrop_Vignette(float2 ScreenUV, float Strength, float Radius, float Softness)
+{
+	float2 P = (ScreenUV - 0.5) * 2.0;
+	float D = length(P);
+	return 1.0 - Strength * smoothstep(Radius, Radius + Softness, D);
+}
+
+// Sparse round stars that twinkle slowly; Aspect keeps them round on a non-square plane
+float3 Backdrop_Stars(float2 UV, float Aspect, float Density, float Coverage, float Size,
+		float3 StarColor, float Intensity, float Time, float TwinkleSpeed)
+{
+	float2 P = UV * float2(Aspect, 1.0) * Density;
+	float2 Cell = floor(P);
+	float2 Local = frac(P) - 0.5;
+	
+	float Present = GL_Hash21(Cell + BACKDROP_SEED_STAR) < Coverage ? 1.0 : 0.0;
+	float2 Offset = (float2(GL_Hash21(Cell + BACKDROP_SEED_OFFSET_X), GL_Hash21(Cell + BACKDROP_SEED_OFFSET_Y)) - 0.5) * 0.6;
+	float Radius = Size * lerp(0.3, 1.0, GL_Hash21(Cell + BACKDROP_SEED_SIZE));
+	float Core = 1.0 - smoothstep(0.0, Radius, length(Local - Offset));
+	
+	float Phase = GL_Hash21(Cell + BACKDROP_SEED_PHASE) * 6.2832;
+	float Twinkle = 0.6 + 0.4 * sin(Time * TwinkleSpeed + Phase);
+	
+	return StarColor * Present * Core * Core * Twinkle * Intensity;
+}
+
+// Fractal noise: layers of GL_GradientNoise, each twice as detailed and half as strong (0..1)
+float Backdrop_FBM(float2 P)
+{
+	float Sum = 0.0;
+	float Amplitude = 0.5;
+	float Total = 0.0;
+	for (int i = 0; i < BACKDROP_FOG_OCTAVES; i++)
+	{
+		Sum += GL_GradientNoise(P) * Amplitude;
+		Total += Amplitude;
+		P = mul(BACKDROP_FOG_ROTATION, P) * 2.0 + BACKDROP_FOG_OCTAVE_SHIFT;
+		Amplitude *= 0.5;
+	}
+	return Sum / Total;
+}
+
+// Soft smoke rising from the glow line, only in the middle of the screen
+float3 Backdrop_Fog(float2 UV, float Aspect, float Scale, float Height, float Rise,
+		float3 FogColor, float Intensity, float Time, float Speed)
+{
+	float2 P = UV * float2(Aspect, 1.0) * Scale;
+	P += float2(Time * Speed, Time * Speed * 0.5);
+	
+	float2 Warp = float2(Backdrop_FBM(P), Backdrop_FBM(P + BACKDROP_FOG_WARP_OFFSET));
+	float Smoke = Backdrop_FBM(P + Warp * BACKDROP_FOG_WARP_STRENGTH);
+	float Wisps = smoothstep(0.3, 0.8, Smoke);
+	
+	float Above = saturate((Height - UV.y) / max(Rise, 0.001));
+	float Vertical = (1.0 - Above) * smoothstep(Height + 0.05, Height, UV.y);
+	float X = (UV.x - 0.5) * 2.0;
+	float Horizontal = saturate(1.0 - X * X);
+	
+	return FogColor * Wisps * Vertical * Horizontal * Intensity;
+}
+
+// Rare light streaks crossing the backdrop diagonally; each lane rolls per cycle whether it fires and its color
+float3 Backdrop_ShootingStars(float2 UV, float Aspect, float AngleDegrees, float Lanes, float Coverage,
+		float Length, float Width, float Speed, float Time, float3 ColorA, float3 ColorB, float Intensity)
+{
+	float2 P = (UV - 0.5) * float2(Aspect, 1.0);
+	float Angle = radians(AngleDegrees);
+	float2 Dir = float2(cos(Angle), sin(Angle));
+	float2 Side = float2(-Dir.y, Dir.x);
+	
+	float Along = dot(P, Dir);
+	float Across = dot(P, Side) * Lanes;
+	float Lane = floor(Across);
+	float LaneLocal = frac(Across) - 0.5;
+	
+	float T = Time * Speed + GL_HashLattice(float2(Lane, BACKDROP_SEED_STREAK_PHASE));
+	float Cycle = floor(T);
+	float Active = GL_HashLattice(float2(Lane, Cycle + BACKDROP_SEED_STREAK_ACTIVE)) < Coverage ? 1.0 : 0.0;
+	
+	float Head = lerp(-BACKDROP_STREAK_TRAVEL, BACKDROP_STREAK_TRAVEL, frac(T));
+	float TailEnd = Head - Length;
+	
+	// Distance to the segment between the tail end and the head (a capsule: rounded at the head)
+	float AlongDistance = Along - clamp(Along, TailEnd, Head);
+	float AcrossDistance = LaneLocal / Lanes;
+	float D = length(float2(AlongDistance, AcrossDistance));
+	
+	// Brightest at the head, fading towards the tail end
+	float Tail = saturate((Along - TailEnd) / max(Length, 0.001));
+	
+	float Core = exp(-D * D / max(Width * Width, 0.000001));
+	float HaloWidth = Width * BACKDROP_STREAK_HALO;
+	float Halo = exp(-D * D / max(HaloWidth * HaloWidth, 0.000001)) * BACKDROP_STREAK_HALO_STRENGTH;
+	
+	float3 Color = lerp(ColorA, ColorB, GL_HashLattice(float2(Lane, Cycle + BACKDROP_SEED_STREAK_COLOR)));
+	return Color * Tail * Tail * (Core + Halo) * Active * Intensity;
+}
+
+// Final backdrop color: gradient, glow and extra layers (stars, fog, shooting stars), darkened at the screen corners
+float3 Backdrop_Color(float2 UV, float3 TopColor, float3 BottomColor,
+		float3 GlowColor, float GlowIntensity, float GlowHeight, float GlowThickness, float GlowSpread,
+		float2 ScreenUV, float VignetteStrength, float VignetteRadius, float VignetteSoftness, float3 Layers)
+{
+	float Glow = Backdrop_Glow(UV, GlowHeight, GlowThickness, GlowSpread);
+	float3 Color = Backdrop_Gradient(UV, TopColor, BottomColor) + GlowColor * Glow * GlowIntensity + Layers;
+	return Color * Backdrop_Vignette(ScreenUV, VignetteStrength, VignetteRadius, VignetteSoftness);
+}
