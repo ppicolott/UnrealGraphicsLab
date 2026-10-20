@@ -10,6 +10,6 @@ public class UnrealGraphicsLabEditorTarget : TargetRules
 		Type = TargetType.Editor;
 		DefaultBuildSettings = BuildSettingsVersion.V7;
 		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_8;
-		ExtraModuleNames.Add("UnrealGraphicsLab");
+		ExtraModuleNames.AddRange(new string[] { "UnrealGraphicsLab", "GraphicsLabShaders" });
 	}
 }

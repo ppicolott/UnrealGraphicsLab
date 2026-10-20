@@ -1,0 +1,77 @@
+#pragma once
+
+#include "Card.ush"
+
+// Symbol slots measured on the art (CardUV, V grows downwards)
+static const float2 CARD_BACK_SYMBOL_CENTER = float2(0.509, 0.4791);
+static const float2 CARD_BACK_CORNER_SYMBOLS[4] =
+{
+	float2(0.0905, 0.0641), float2(0.9085, 0.0641), // top left, top right
+	float2(0.0905, 0.9268), float2(0.9085, 0.9268) // bottom left, bottom right
+};
+
+// Square plane UV -> card UV (0..1 across the 63x88 card). Zoom > 1 crops slightly into the art
+float2 CardBack_UV(float2 UV, float Aspect, float Zoom)
+{
+	float2 P = UV - 0.5;
+	P.x /= Aspect; // the card is narrower than the plane
+	return P / max(Zoom, 0.01) + 0.5;
+}
+
+// One symbol stamp: Size is the side of the symbol texture in card heights
+float CardBack_SymbolAt(Texture2D Symbol, SamplerState SymbolSampler, float2 CardUV, float Aspect, float2 Center, float Size)
+{
+	float2 Local = (CardUV - Center) * float2(Aspect, 1.0) / Size + 0.5;
+	float Inside = all(Local == saturate(Local)) ? 1.0 : 0.0;
+	// SampleGrad with explicit derivatives: ray tracing shaders have no pixel neighbours,
+	// and Unreal defines ddx/ddy as 0 there, so they fall back to the top mip instead of failing
+	return Symbol.SampleGrad(SymbolSampler, Local, ddx(Local), ddy(Local)).r * Inside;
+}
+
+// The same symbol in the central emblem and the four corner medallions
+float CardBack_Symbols(Texture2D Symbol, SamplerState SymbolSampler, float2 CardUV, float Aspect, float Size, float CornerSize)
+{
+	float Mask = CardBack_SymbolAt(Symbol, SymbolSampler, CardUV, Aspect, CARD_BACK_SYMBOL_CENTER, Size);
+	for (int i = 0; i < 4; i++)
+	{
+		Mask = max(Mask, CardBack_SymbolAt(Symbol, SymbolSampler, CardUV, Aspect, CARD_BACK_CORNER_SYMBOLS[i], CornerSize));
+	}
+	return Mask;
+}
+
+// Gold elements and the gold streaks turn into metal with the same grain as the front (returns Roughness)
+float CardBack_Surface(float2 CardUV, float Aspect, float GoldMask, float SymbolMask, float FlashMask, float FlashAmount,
+					   float GoldRoughness, float GrainDensity, float GrainStrength, float GrainTolerance,
+					   out float Metallic, out float3 Normal, out float SparkleMask)
+{
+	float MetalMask = max(max(GoldMask, SymbolMask), saturate(FlashMask * FlashAmount));
+	
+	float GrainRoughness;
+	float2 GrainTilt = Card_GoldGrain(CardUV, Aspect, GrainDensity, GrainStrength, GrainTolerance, GrainRoughness);
+	
+	Metallic = MetalMask;
+	SparkleMask = MetalMask;
+	
+	Normal = normalize(float3(GrainTilt * MetalMask, 1.0));
+	
+	float Roughness = lerp(CARD_BASE_ROUGHNESS, GoldRoughness, MetalMask);
+	return saturate(Roughness + GrainRoughness * MetalMask);
+}
+
+// "Makeup multichrome": the swirls' hue slides with the view angle, and the painted gold streaks (FlashMask) catch the light in turns
+float3 CardBack_BaseColor(float3 Art, float SwirlMask, float FlashMask, float2 CardUV, float3 ViewTS, float Shift, float Spread,
+						  float3 FlashColor, float FlashAmount, float FlashFrequency, float FlashViewInfluence, float SymbolMask, float3 SymbolColor)
+{
+	float Turns = (ViewTS.x + ViewTS.y) * Shift // tilting the card slides the hue
+				+ (CardUV.x + CardUV.y) * Spread; // soft diagonal gradient across the card
+	float3 Color = lerp(Art, GL_HueShift(Art, Turns), SwirlMask);
+	
+	float Phase = (CardUV.x + CardUV.y) * FlashFrequency + (ViewTS.x + ViewTS.y) * FlashViewInfluence;
+	float Glint = 0.5 + 0.5 * cos(Phase * 2.0 * PI);
+	
+	float Luma = dot(Art, float3(0.2126, 0.7152, 0.0722));
+	float3 Flash = FlashColor * (1.0 + Luma);
+	
+	Color = lerp(Color, Flash, saturate(FlashMask * FlashAmount * lerp(0.6, 1.0, Glint)));
+	return lerp(Color, SymbolColor, SymbolMask);
+}
