@@ -106,6 +106,12 @@ Shader math lives in `.ush` files. The material graph only holds parameters, tex
 2. Add `LS_Card_HeroShots` to **Window → Cinematics → Movie Render Queue**.
 3. Render with these settings: PNG sequence, 1920×1080, 8 temporal samples, 60 warm-up frames, and Shutter Timing set to **Frame Open**.
 
+## Meet Nina
+
+The cards star Nina, my corgi. Here she is helping me at the desk.
+
+<img src="docs/media/nina.jpg" alt="Paula and Nina the corgi at the desk" width="360">
+
 ## Art and credits
 
 Several images were generated with AI (ChatGPT): the Nina poses, the card backgrounds and the card back. The cards that use them carry an "AI Generated" stamp.
